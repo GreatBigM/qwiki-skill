@@ -1,7 +1,7 @@
 ---
 name: qwiki
 description: Use when user says qwiki. Knowledge base management.
-version: 1.7.7
+version: 1.8.0
 author: Hermes Agent
 license: MIT
 category: knowledge
@@ -77,6 +77,9 @@ AI:  执行操作 → 回报结果
    - 已有 → 跳过
    - 缺失 → 提示"SOUL.md 中未声明 qwiki 知识库，检索链不会自动生效。是否添加？"
    - Y → 追加知识体系节到 SOUL.md（含检索链 + L1/L2 说明）
+10. **hook 注册检测**（自发生长事件驱动层）：
+   - 检查 `~/.hermes/config.yaml` 的 `hooks:` 是否已注册 4 个 knowledge-sediment 脚本（on_session_end/post_tool_call/pre_llm_call/subagent_stop）
+   - 缺失 → 提示"知识自动沉淀依赖 hook 事件驱动（代码修改即时感知/会话结束补沉淀）。是否注册？"→ Y → 按 `references/hermes-hooks.md` 注册 + 复制 `scripts/knowledge-sediment-*.sh` 到 `~/.hermes/scripts/`
 
 ---
 
@@ -212,6 +215,7 @@ import 之后接力执行：检测项目历史知识（references/design/archive
 
 - **自动判断模式（自发生长）**：三触发源出现时 AI 直接建卡/更新，不等用户命令——
   ① 验证结论产生（实测/分析出结论）② 重复实践未命中知识点（查 INDEX 无对应卡且实践再现）③ 代码修改后对应卡需更新
+- **hook 事件驱动层**（善用 hook，任务嵌入事件点，SOUL 零改动）：`scripts/knowledge-sediment-*.sh` 四脚本注册到 config.yaml（on_session_end 写标记 / post_tool_call 信号检测 / pre_llm_call 指令注入 / subagent_stop 子代理产出）——机制说明见 `references/hermes-hooks.md`
 - **知识归属路由**（决定卡放哪）：
   - 个人方法论/工作哲学 → `~/qwiki/personal/`
   - 跨项目知识（反模式/通用经验/工具坑，来源项目、适用多项目）→ `~/qwiki/projects/common/`
@@ -250,5 +254,6 @@ INDEX 条目数、已入驻项目、codegraph 状态、知识文件数。
 
 - init 模板（建库）：`templates/index.md`、`templates/routing.md`、`templates/schema.md`、`templates/history.md`
 - 卡片模板（生成卡）：`templates/card.md`、`templates/note.md`
-- 参考：`references/agents-md-structure.md`、`references/codegraph-quickstart.md`（下级接入参考，import 项目入驻时用）
+- hook 脚本（自发生长事件驱动）：`scripts/knowledge-sediment-hint.sh`、`scripts/knowledge-sediment-toolcheck.sh`、`scripts/knowledge-sediment-inject.sh`、`scripts/knowledge-sediment-subagent.sh`
+- 参考：`references/agents-md-structure.md`、`references/codegraph-quickstart.md`（下级接入参考，import 项目入驻时用）、`references/hermes-hooks.md`（hook 机制说明）
 - 版本记录：`CHANGELOG.md`（随安装拷贝，记录版本历史）
