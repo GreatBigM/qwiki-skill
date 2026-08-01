@@ -2,6 +2,14 @@
 
 本文件记录版本历史。版本号定义在 SKILL.md frontmatter 的 `version` 字段（单一真相源）。
 
+## 1.8.1 (2026-08-02)
+
+### Fixed
+- **hook 协议 bug 修复（2026-08-01 复盘 B1/B2/B3，源码二次确认）**：
+  - B1: hint.sh 输出纯文本与 inject.sh 的 json.load 协议不兼容 → session_id 丢失。改为 JSON 格式（与 toolcheck/subagent 一致），inject 成功读取 session_id
+  - B2: subagent.sh 读 `extra.role/extra.goal`，真实 payload 在顶层 `child_role/child_summary/child_status`（hooks.py:187-205）→ detail 恒为"子代理(未知)"。已改读顶层字段 + parent_session_id
+  - B3: references/hermes-hooks.md 写 post_tool_call extra 嵌套，实际字段在顶层（hooks.py:120-128）。已修正 Wire 协议段并补充 subagent_stop 字段清单
+
 ## 1.8.0 (2026-08-01)
 
 ### Added

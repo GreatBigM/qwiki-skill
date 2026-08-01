@@ -127,6 +127,6 @@ reference/design/change 是项目文档（workbench 产物），是卡片的素�
 ## 迁移规则
 
 - **L2→L1**：只能升到 memory，**永远不允许写入 SOUL.md**
-- **只进不出**：内容不删，只追加。过时内容加 `deprecated` 标记而非删除
+- **HISTORY.md 只进不出**：HISTORY 档案内容不删，只追加；过时内容加 `deprecated` 标记而非删除（注意：此规则仅限 HISTORY.md，卡片按§卡片身份的活知识原则可修正/销毁）
 
 > @see [[ROUTING.md]]

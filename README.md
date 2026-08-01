@@ -82,10 +82,12 @@ qwiki deinit            # 全局拆除
 ```
 qwiki-skill/
 ├── README.md                        ← 本文件（仓库说明 + 安装方法）
-├── install.sh                       ← 一键安装脚本
+├── install.sh                       ← 一键安装脚本（多 agent 目标）
+├── CHANGELOG.md                     ← 版本历史
 ├── SKILL.md                         ← 操作手册（九操作路由 + 详细步骤，仓库根即 skill）
-├── templates/                       ← index / routing / card / note 四模板
-└── references/                      ← spec / agents-md-structure / codegraph-quickstart
+├── templates/                       ← index / routing / schema / history / card / note 六模板
+├── references/                      ← agents-md-structure / codegraph-quickstart / hermes-hooks
+└── scripts/                         ← knowledge-sediment-*.sh 四脚本（hook 事件驱动层）
 ```
 
 ## 设计理念

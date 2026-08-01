@@ -1,35 +1,46 @@
 #!/bin/bash
 # pre_llm_call hook：知识沉淀指令注入（当前对话内即时触发）
-# 读取待沉淀标记（JSON：type/detail/session_id）→ 注入针对性指令；无标记 → 静默
+# 读取队列目录中所有待沉淀标记 → 合并为一条指令注入 → 读后即删（确定性生命周期，不依赖 AI 清除）
 
-marker="$HOME/.hermes/state/knowledge-sediment-hint"
-if [ -f "$marker" ]; then
-  python3 << 'EOF'
-import sys, json, os
+QUEUE_DIR="$HOME/.hermes/state/knowledge-sediment"
+# python3 缺失时静默退出（hook 不应阻塞主流程）
+command -v python3 &>/dev/null || exit 0
+[ -d "$QUEUE_DIR" ] && [ -n "$(ls -A "$QUEUE_DIR" 2>/dev/null)" ] && python3 << 'EOF'
+import sys, json, os, glob
 
-marker = os.path.expanduser("~/.hermes/state/knowledge-sediment-hint")
-try:
-    with open(marker) as f:
-        d = json.load(f)
-    mtype = d.get("type", "session_end")
-    detail = d.get("detail", "")
-except Exception:
-    mtype, detail = "session_end", ""
+queue_dir = os.path.expanduser("~/.hermes/state/knowledge-sediment")
+markers = sorted(glob.glob(os.path.join(queue_dir, "*.json")))
+if not markers:
+    sys.exit(0)
 
-if mtype == "code_change":
-    instruction = (f"【知识沉淀检查·代码修改】刚修改了 {detail}。执行：加载 qwiki skill，"
-                   "按文件路径匹配相关模块卡的「模块边界」→ 更新受影响卡（活知识：与代码同步）；"
-                   "如有新的可复用知识点按归属路由建卡；完成后删除标记文件 ~/.hermes/state/knowledge-sediment-hint")
-elif mtype == "verify_done":
-    instruction = (f"【知识沉淀检查·验证结论】刚执行 {detail} 并成功。若产生验证过的结论（实测数据支撑），"
-                   "按归属路由建卡或更新相关卡（个人方法论→personal/，跨项目→projects/common/，项目特定→项目卡）；"
-                   "完成后删除标记文件 ~/.hermes/state/knowledge-sediment-hint")
-else:
-    instruction = ("【知识沉淀检查】上次会话已结束。执行：加载 qwiki skill，用 session_search 检索最近会话知识点"
-                   "（验证结论/重复实践/代码修改三类触发源）→ 按归属路由建卡或更新 → 删除标记文件 "
-                   "~/.hermes/state/knowledge-sediment-hint")
+instructions = []
+for path in markers:
+    try:
+        with open(path) as f:
+            d = json.load(f)
+        mtype = d.get("type", "session_end")
+        detail = d.get("detail", "")
+    except Exception:
+        mtype, detail = "session_end", ""
 
-print(json.dumps({"context": instruction}, ensure_ascii=False))
+    if mtype == "code_change":
+        instructions.append(f"• 代码修改（{detail}）：按文件路径匹配相关模块卡的「模块边界」→ 更新受影响卡")
+    elif mtype == "verify_done":
+        instructions.append(f"• 验证成功（{detail}）：若产生验证过的结论，按归属路由建卡或更新相关卡")
+    elif mtype == "subagent_done":
+        instructions.append(f"• 子代理产出（{detail}）：检查产出中的可沉淀知识点")
+    else:
+        instructions.append("• 上次会话已结束：检索最近会话知识点（验证结论/重复实践/代码修改）→ 按归属路由建卡或更新")
+
+    # 读后即删——确定性消费，不依赖 AI 行为
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+
+if instructions:
+    combined = ("【知识沉淀检查】以下事件待沉淀（加载 qwiki skill 执行，归属路由：个人→personal/，"
+                "跨项目→projects/common/，项目→项目卡）：\n" + "\n".join(instructions))
+    print(json.dumps({"context": combined}, ensure_ascii=False))
 EOF
-fi
 exit 0
