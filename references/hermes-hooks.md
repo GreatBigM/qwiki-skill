@@ -20,8 +20,9 @@
 
 ## Wire 协议（stdin/stdout）
 
-- **stdin**（JSON 管道）：`{"hook_event_name": "...", "session_id": "...", "cwd": "...", "extra": {...}, ...事件特定字段}`
-  - `post_tool_call` extra：`tool_name/args/result/status/duration_ms/task_id`
+- **stdin**（JSON 管道）：`{"hook_event_name": "...", "session_id": "...", "cwd": "...", ...事件特定字段}`——事件字段在**顶层**，无 `extra` 嵌套（源码 hooks.py 确认，2026-08-02 修 B3）
+  - `post_tool_call` 顶层字段：`tool_name/args/result/status/duration_ms/task_id/tool_call_id`
+  - `subagent_stop` 顶层字段：`parent_session_id/child_role/child_summary/child_status/tool_call_history/duration_ms`
 - **stdout**（JSON 可选）：`{"context": "..."}` → pre_llm_call 注入 LLM 上下文；`{"decision": "block", ...}` → pre_tool_call 拦截；空/非匹配 JSON → 静默
 
 ## 注册（config.yaml）

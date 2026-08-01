@@ -10,7 +10,7 @@ set -euo pipefail
 
 REPO_URL="https://gitee.com/GreatBigM/qwiki-skill.git"
 SKILL_NAME="qwiki"
-COPY_DIRS="templates references"   # 除 SKILL.md/CHANGELOG.md 外需拷贝的目录
+COPY_DIRS="templates references scripts"   # 除 SKILL.md/CHANGELOG.md 外需拷贝的目录
 
 get_version() { grep -m1 '^version:' "$1" 2>/dev/null | sed 's/^version:[[:space:]]*//' | tr -d '"'\'' ' || true; }
 version_gt() { [ "$1" != "$2" ] && [ -n "$2" ] && [ "$(printf '%s\n%s\n' "$2" "$1" | sort -V | head -1)" = "$2" ]; }

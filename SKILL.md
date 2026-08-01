@@ -1,7 +1,7 @@
 ---
 name: qwiki
 description: Use when user says qwiki. Knowledge base management.
-version: 1.8.0
+version: 1.8.1
 author: Hermes Agent
 license: MIT
 category: knowledge
