@@ -2,6 +2,11 @@
 
 本文件记录版本历史。版本号定义在 SKILL.md frontmatter 的 `version` 字段（单一真相源）。
 
+## 1.7.2 (2026-08-01)
+
+### Changed
+- 执行层说明收敛：qwiki SKILL.md 架构文档节 / templates/schema.md / SCHEMA.md 顶部的「命名决策」说明全部移除——SCHEMA/SPEC 语义定性单一真相源收敛至框架层（hermes-skill-gen 约束 7），执行层按 SKILL+模板执行，不需要知道选词依据
+
 ## 1.7.1 (2026-08-01)
 
 ### Changed
