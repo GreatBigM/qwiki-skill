@@ -1,7 +1,7 @@
 ---
 name: qwiki
 description: Use when user says qwiki. Knowledge base management.
-version: 1.8.2
+version: 1.8.3
 author: Hermes Agent
 license: MIT
 category: knowledge
@@ -77,9 +77,11 @@ AI:  执行操作 → 回报结果
    - 已有 → 跳过
    - 缺失 → 提示"SOUL.md 中未声明 qwiki 知识库，检索链不会自动生效。是否添加？"
    - Y → 追加知识体系节到 SOUL.md（含检索链 + L1/L2 说明）
-10. **hook 注册检测**（自发生长事件驱动层）：
+10. **hook 注册检测**（自发生长事件驱动层，仅 Hermes 环境）：
    - 检查 `~/.hermes/config.yaml` 的 `hooks:` 是否已注册 4 个 knowledge-sediment 脚本（on_session_end/post_tool_call/pre_llm_call/subagent_stop）
    - 缺失 → 提示"知识自动沉淀依赖 hook 事件驱动（代码修改即时感知/会话结束补沉淀）。是否注册？"→ Y → 按 `references/hermes-hooks.md` 注册 + 复制 `scripts/knowledge-sediment-*.sh` 到 `~/.hermes/scripts/`
+
+> **多 agent 降级说明**：init 第 9-10 步（SOUL.md 注入 + hook 注册）仅适用于 Hermes 环境。Claude Code / Codex 无 SOUL.md 和 hooks 机制，自动跳过这两步；知识管理功能（import/note/sync/explore 等）不受影响，仅失去事件驱动的自动沉淀触发。
 
 ---
 
@@ -88,8 +90,12 @@ AI:  执行操作 → 回报结果
 1. 确认操作
 2. 询问："是否同时卸载 codegraph？"（如已安装）
 3. 是 → `codegraph uninstall` 或 `rm -rf ~/.codegraph/`
-4. `cd ~/qwiki && cd .. && mv qwiki qwiki.bak.$(date +%Y%m%d)`
-5. 建议从 SOUL.md 移除知识库声明
+4. **hook 清理**（与 init 注册对称）：
+   - 从 `~/.hermes/config.yaml` 移除 4 个 knowledge-sediment hook 注册项
+   - 删除 `~/.hermes/scripts/knowledge-sediment-*.sh`
+   - 清空标记队列 `rm -rf ~/.hermes/state/knowledge-sediment/`
+5. **SOUL.md 清理**：检查并移除「知识体系」节（自动执行，不仅建议）
+6. `cd ~/qwiki && cd .. && mv qwiki qwiki.bak.$(date +%Y%m%d)`
 
 ---
 
@@ -215,7 +221,7 @@ import 之后接力执行：检测项目历史知识（references/design/archive
 
 - **自动判断模式（自发生长）**：三触发源出现时 AI 直接建卡/更新，不等用户命令——
   ① 验证结论产生（实测/分析出结论）② 重复实践未命中知识点（查 INDEX 无对应卡且实践再现）③ 代码修改后对应卡需更新
-- **hook 事件驱动层**（善用 hook，任务嵌入事件点，SOUL 零改动）：`scripts/knowledge-sediment-hint.sh` / `toolcheck.sh` / `inject.sh` / `subagent.sh` 四脚本注册到 config.yaml（on_session_end 写标记 / post_tool_call 信号检测 / pre_llm_call 指令注入 / subagent_stop 子代理产出）——机制说明见 `references/hermes-hooks.md`
+- **hook 事件驱动层**（善用 hook，任务嵌入事件点，SOUL 零改动）：`scripts/knowledge-sediment-*.sh` 四脚本注册到 config.yaml（on_session_end 写标记 / post_tool_call 信号检测 / pre_llm_call 读队列注入指令并消费标记 / subagent_stop 子代理产出）——标记写入队列目录 `~/.hermes/state/knowledge-sediment/`，inject 读后即删，不依赖 AI 清除——机制说明见 `references/hermes-hooks.md`
 - **知识归属路由**（决定卡放哪）：
   - 个人方法论/工作哲学 → `~/qwiki/personal/`
   - 跨项目知识（反模式/通用经验/工具坑，来源项目、适用多项目）→ `~/qwiki/projects/common/`
