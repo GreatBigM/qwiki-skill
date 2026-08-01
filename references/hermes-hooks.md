@@ -44,16 +44,18 @@ hooks:
 ## 沉淀链路（标记 → 注入 → 执行）
 
 ```
-标记文件 ~/.hermes/state/knowledge-sediment-hint（JSON：type/detail/session_id）
+队列目录 ~/.hermes/state/knowledge-sediment/（每个事件一个 JSON 文件：<纳秒时间戳>-<type>.json）
   type=code_change  代码修改（含文件路径）→ 注入"按模块边界匹配更新卡"
   type=verify_done  验证成功（含命令）   → 注入"结论按归属路由沉淀"
   type=session_end  会话结束            → 注入"检索最近会话知识点"
   type=subagent_done 子代理产出         → 注入"检查子代理产出知识点"
-执行：加载本 skill → 按归属路由建卡/更新（个人→personal/，跨项目→projects/common/，项目→项目卡）→ 清标记
+inject.sh 读取全部标记 → 合并为一条指令注入 → 读后即删（确定性生命周期，不依赖 AI 清除）
+执行：加载本 skill → 按归属路由建卡/更新（个人→personal/，跨项目→projects/common/，项目→项目卡）
 ```
 
 ## 坑
 
 - **heredoc 覆盖 stdin**：`cat | python3 << 'EOF'` 中 python 的 stdin 是 heredoc（读到代码本身）——payload 必须经环境变量传递（`export HOOK_PAYLOAD="$payload"` + `os.environ`）
 - `hermes hooks test --payload-file` 的默认 payload 固定 `tool_name=terminal`（--for-tool 只影响 matcher 不改变 payload）——模拟测试要传完整 payload
-- 注入会 append 到 user message——指令要精炼（一次沉淀动作），执行完清标记避免重复注入
+- 注入会 append 到 user message——指令要精炼（一次沉淀动作），inject 读后即删避免重复注入
+- **队列目录设计**：每个事件写独立文件（纳秒时间戳前缀），避免快速连续事件互相覆盖；inject 一次性消费全部标记

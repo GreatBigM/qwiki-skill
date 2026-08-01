@@ -2,6 +2,16 @@
 
 本文件记录版本历史。版本号定义在 SKILL.md frontmatter 的 `version` 字段（单一真相源）。
 
+## 1.8.3 (2026-08-02)
+
+### Fixed
+- **回退恢复**：v1.8.1 提交时仅挑选部分文件，用户 v1.9.0 改动被丢弃——本轮补回：
+  - SKILL.md init 第 10 步标注「仅 Hermes 环境」+ 多 agent 降级说明块
+  - SKILL.md deinit 重构为 4-6 步（hook 清理 + SOUL.md 自动清理，与 init 对称）
+  - SKILL.md hook 事件驱动层描述改为队列目录版
+  - references/hermes-hooks.md 沉淀链路改队列目录 + 读后即删 + 队列目录坑
+  - CHANGELOG 补回 install.sh 补拷贝 scripts、deinit 对称、队列重构等历史说明（见 1.8.1/1.8.2 条目）
+
 ## 1.8.2 (2026-08-02)
 
 ### Fixed
