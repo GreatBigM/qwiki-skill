@@ -1,7 +1,7 @@
 ---
 name: qwiki
 description: Use when user says qwiki. Knowledge base management.
-version: 1.7.4
+version: 1.7.5
 author: Hermes Agent
 license: MIT
 category: knowledge
@@ -181,7 +181,12 @@ import 之后接力执行：检测项目历史知识（references/design/archive
    - 提取「模块边界」中列出的关键文件路径
    - 对每个路径 `codegraph query` 验证是否仍在索引中
    - 缺失 → INDEX 对应条目标记 `⚠️ 待验证`，通知用户
-4. `cd ~/qwiki && git add -A && git commit -m "sync $(date +%Y%m%d)"`（有变更时）
+4. **防腐化判定**（按 `~/qwiki/SCHEMA.md` §卡片身份 活知识原则）：
+   - 死链清单 → 修正引用
+   - 与代码/实测矛盾的卡 → 修正内容
+   - 完全不符合现实的卡 → 提出销毁建议（确认后删）
+   - 孤岛（零入链）→ 标记冷门保留，不销毁
+5. `cd ~/qwiki && git add -A && git commit -m "sync $(date +%Y%m%d)"`（有变更时）
 
 ---
 
@@ -205,6 +210,8 @@ import 之后接力执行：检测项目历史知识（references/design/archive
 
 `qwiki note <标题>` → 按 `templates/note.md` 创建 `~/qwiki/personal/<slug>.md` → INDEX 加一行。
 
+- **自动判断模式（自发生长）**：三触发源出现时 AI 直接建卡/更新，不等用户命令——
+  ① 验证结论产生（实测/分析出结论）② 重复实践未命中知识点（查 INDEX 无对应卡且实践再现）③ 代码修改后对应卡需更新
 - **必填动作**（生成时自动做，三处一次填齐同一字符串）：YAML summary（真相源）+ 正文 `>` 行（渲染副本）+ INDEX 登记行
 - YAML 头按公约：title/type/date 必填 + summary 真相源 + tags
 - 相关段用 `[[slug]]` 双链（文档级链接，见 `~/qwiki/SCHEMA.md` §知识互联）
