@@ -2,6 +2,16 @@
 
 本文件记录版本历史。版本号定义在 SKILL.md frontmatter 的 `version` 字段（单一真相源）。
 
+## 1.7.0 (2026-08-01)
+
+### Added
+- templates/history.md：HISTORY 大事记模板（事件粒度：方法论定稿/架构决策/实践结论，与 git log 区分）
+- SKILL.md init 流程新增创建 HISTORY.md——init 四件套齐（INDEX/ROUTING/SCHEMA/HISTORY）
+- 支持文件清单分类标注：init 模板（建库）vs 卡片模板（生成卡）
+
+### Changed
+- 知识库根 README.md 删除：v2 模型说明（五类工件模型）完全过时，与 v4 卡片体系/SCHEMA 宪法矛盾，接入指引已被 ROUTING+SCHEMA 覆盖
+
 ## 1.6.0 (2026-08-01)
 
 ### Changed
