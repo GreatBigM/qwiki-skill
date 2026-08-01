@@ -2,6 +2,12 @@
 
 本文件记录版本历史。版本号定义在 SKILL.md frontmatter 的 `version` 字段（单一真相源）。
 
+## 1.7.7 (2026-08-01)
+
+### Added
+- projects/common/（跨项目公共知识）入宪同步：templates/schema.md 补 common 定义、templates/index.md 补 common 区、init 流程建 common/ 目录
+- note 操作新增「知识归属路由」：个人方法论→personal/、跨项目知识→projects/common/、项目特定→项目卡/references
+
 ## 1.7.6 (2026-08-01)
 
 ### Changed
