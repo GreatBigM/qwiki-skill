@@ -7,7 +7,7 @@ qwiki 让 AI 助理拥有一个 git 管理的知识库：项目知识卡片 + �
 ## 安装（推荐：一键脚本）
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/GreatBigM/qwiki-skill/main/install.sh | bash
+curl -fsSL https://gitee.com/GreatBigM/qwiki-skill/raw/main/install.sh | bash
 # 安装后：会话内 /reload-skills，或新开会话自动加载
 ```
 
@@ -23,7 +23,7 @@ curl -fsSL https://raw.githubusercontent.com/GreatBigM/qwiki-skill/main/install.
 
 ```bash
 # 1. 克隆本仓库
-git clone https://github.com/GreatBigM/qwiki-skill.git
+git clone https://gitee.com/GreatBigM/qwiki-skill.git
 
 # 2. 复制到 Hermes 的 skills 目录（不经过安全扫描）
 mkdir -p ~/.hermes/skills/qwiki

@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # qwiki skill 一键安装/更新脚本
-# 用法: curl -fsSL https://raw.githubusercontent.com/GreatBigM/qwiki-skill/main/install.sh | bash
+# 用法: curl -fsSL https://gitee.com/GreatBigM/qwiki-skill/raw/main/install.sh | bash
 # 等价于手动复制，不经过 hermes skills install 的安全扫描
 # 重复执行 = 更新（自动备份旧版 + 版本对比提示）
+# 镜像: github.com/GreatBigM/qwiki-skill（海外备选）
 set -euo pipefail
 
-REPO_URL="https://github.com/GreatBigM/qwiki-skill.git"
+REPO_URL="https://gitee.com/GreatBigM/qwiki-skill.git"
 SKILL_NAME="qwiki"
 SKILLS_DIR="${HOME}/.hermes/skills"
 DEST="${SKILLS_DIR}/${SKILL_NAME}"
