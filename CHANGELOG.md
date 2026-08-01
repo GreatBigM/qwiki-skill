@@ -2,6 +2,18 @@
 
 本文件记录版本历史。版本号定义在 SKILL.md frontmatter 的 `version` 字段（单一真相源）。
 
+## 1.5.0 (2026-08-01)
+
+### Added
+- templates/schema.md：SCHEMA 宪法模板（目录结构/命名/纯度/卡片公约），init 时创建——新用户安装 skill 即有宪法
+- 知识库侧 SCHEMA.md 并入卡片公约三节（YAML 头公约/卡片身份/知识互联）
+
+### Changed
+- **公约真相源迁移**：卡片公约从 skill references/spec.md 迁入知识库 `~/qwiki/SCHEMA.md`（宪法在知识库内，skill 只保留操作引用，不重复定义）
+- references/spec.md 精简为操作速览（目录结构 + 与代码仓关系 + 指向 SCHEMA.md）
+- SKILL.md init 流程新增创建 SCHEMA.md；note/sync/模板节的公约引用全部改指 SCHEMA.md
+- note/card 模板定位声明引用改指 SCHEMA.md
+
 ## 1.4.0 (2026-08-01)
 
 ### Added

@@ -1,7 +1,7 @@
 ---
 name: qwiki
 description: Use when user says qwiki. Knowledge base management.
-version: 1.4.0
+version: 1.5.0
 author: Hermes Agent
 license: MIT
 category: knowledge
@@ -69,8 +69,9 @@ AI:  执行操作 → 回报结果
 3. `cd ~/qwiki && git init`
 4. 创建 INDEX.md（按 `templates/index.md` 模板生成：空表 + personal 分区 + 维护规则脚注）
 5. 创建 ROUTING.md（按 `templates/routing.md` 模板生成：检索链 7 级 + 降级路径 + 自生长规则 + 腐化检测 + 模板指引）
-6. `cd ~/qwiki && git add -A && git commit -m "init qwiki"`
-7. **SOUL.md 注入检测**：
+6. 创建 SCHEMA.md（按 `templates/schema.md` 模板生成：宪法——目录结构/命名/纯度/卡片公约）
+7. `cd ~/qwiki && git add -A && git commit -m "init qwiki"`
+8. **SOUL.md 注入检测**：
    - 检查 `~/.hermes/SOUL.md` 是否已有「知识体系」节
    - 已有 → 跳过
    - 缺失 → 提示"SOUL.md 中未声明 qwiki 知识库，检索链不会自动生效。是否添加？"
@@ -173,7 +174,7 @@ import 之后接力执行：检测项目历史知识（references/design/archive
 1. `codegraph sync`（未安装则跳过，索引同步在无 codegraph 时不适用）
 2. 一致性校验（报告修复）：
    - INDEX 死链/漏登记（登记行指向的文件是否存在）
-   - **双链死链检测**：扫描全库 `[[...]]` 目标，对照知识库文件表（slug/项目-slug），报告悬空链接（见 `references/spec.md` §知识互联）
+   - **双链死链检测**：扫描全库 `[[...]]` 目标，对照知识库文件表（slug/项目-slug），报告悬空链接（见 `~/qwiki/SCHEMA.md` §知识互联）
 3. **知识腐化检测**（仅 codegraph 已安装时执行）：
    - 遍历 INDEX 中所有项目卡片
    - 提取「模块边界」中列出的关键文件路径
@@ -205,7 +206,7 @@ import 之后接力执行：检测项目历史知识（references/design/archive
 
 - **必填动作**（生成时自动做，三处一次填齐同一字符串）：YAML summary（真相源）+ 正文 `>` 行（渲染副本）+ INDEX 登记行
 - YAML 头按公约：title/type/date 必填 + summary 真相源 + tags
-- 相关段用 `[[slug]]` 双链（文档级链接，见 `references/spec.md` §知识互联）
+- 相关段用 `[[slug]]` 双链（文档级链接，见 `~/qwiki/SCHEMA.md` §知识互联）
 - 正文段落为参考骨架（背景/要点/结论），按需取舍，**不强制 schema**——写什么算什么，后续可随时补充
 - 卡片身份：note 是随笔卡（个人来源），与 card 模块卡（项目来源）同一身份；按需演进为模块卡（结构扩展，公约与链接不变）
 - 和 import 的区别：note 无 codegraph、无 AGENTS、无项目目录，一条 INDEX 行 + 一个 .md
@@ -223,15 +224,15 @@ INDEX 条目数、已入驻项目、codegraph 状态、知识文件数。
 
 模块边界 / 职责描述 / 架构设计 / 技术栈 / 代码规范 / 配置命令 / 模块间关系 / 相关
 
-> 卡片公共约定（见 `references/spec.md` §卡片身份）：YAML 头（title/type/date 必填 + summary 真相源）+ 一句话总结 + `[[slug]]` 双链 + 相关段。card=模块卡（八段），note=随笔卡（自由正文），同一身份不同形态。
+> 卡片公共约定（见 `~/qwiki/SCHEMA.md` §卡片身份）：YAML 头（title/type/date 必填 + summary 真相源）+ 一句话总结 + `[[slug]]` 双链 + 相关段。card=模块卡（八段），note=随笔卡（自由正文），同一身份不同形态。
 
 ## 架构文档
 
-本仓库 `references/spec.md`（知识库目录结构规范）。知识库设计方法论演进记录见各版本架构文档。
+知识库宪法见 `~/qwiki/SCHEMA.md`（目录结构/命名/纯度/卡片公约：YAML 头、卡片身份、知识互联）——公约真相源在知识库内。skill 操作速览见本仓库 `references/spec.md`。
 
 ## 支持文件清单
 
 本 skill 依赖以下模板与参考文件（安装时随 SKILL.md 一并打包，请勿删除）：
 
-- 模板：`templates/index.md`、`templates/routing.md`、`templates/card.md`、`templates/note.md`
+- 模板：`templates/index.md`、`templates/routing.md`、`templates/schema.md`、`templates/card.md`、`templates/note.md`
 - 参考：`references/spec.md`、`references/agents-md-structure.md`、`references/codegraph-quickstart.md`
