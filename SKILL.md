@@ -1,7 +1,7 @@
 ---
 name: qwiki
 description: Use when user says qwiki. Knowledge base management.
-version: 1.7.5
+version: 1.7.6
 author: Hermes Agent
 license: MIT
 category: knowledge
@@ -138,7 +138,7 @@ AI:  执行操作 → 回报结果
 
 ### 精化（可选，编译可用时）
 
-bear 全量捕获（capture-project-scope）→ 用编译事实替换静态推导 → 工程划分定稿。环境装配是 ops 的活，不在 import 流程内自动做。
+bear 全量捕获（编译入口捕获，方法见 `references/codegraph-quickstart.md`）→ 用编译事实替换静态推导 → 工程划分定稿。环境装配是 ops 的活，不在 import 流程内自动做。
 
 ---
 
@@ -247,3 +247,4 @@ INDEX 条目数、已入驻项目、codegraph 状态、知识文件数。
 - init 模板（建库）：`templates/index.md`、`templates/routing.md`、`templates/schema.md`、`templates/history.md`
 - 卡片模板（生成卡）：`templates/card.md`、`templates/note.md`
 - 参考：`references/agents-md-structure.md`、`references/codegraph-quickstart.md`（下级接入参考，import 项目入驻时用）
+- 版本记录：`CHANGELOG.md`（随安装拷贝，记录版本历史）

@@ -23,7 +23,7 @@ codegraph index         # 建立索引库 .codegraph/codegraph.db
 ```
 
 > 只需源码树，无编译环境依赖。大仓（monorepo）务必配置排除规则后再 index，
-> 否则索引体积和耗时失控（参考 codegraph-monorepo-exclusions 的思路：选择性纳入 + 产物排除）。
+> 否则索引体积和耗时失控（思路：选择性纳入 + 产物排除）。
 
 ## 查询（CLI）
 
