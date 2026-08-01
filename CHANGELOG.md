@@ -2,6 +2,11 @@
 
 本文件记录版本历史。版本号定义在 SKILL.md frontmatter 的 `version` 字段（单一真相源）。
 
+## 1.7.1 (2026-08-01)
+
+### Changed
+- 命名决策深化：SCHEMA/SPEC 按可变性分工——SCHEMA=不可更改的（宪法/蓝图），SPEC=可更改的（工程约束/当前规格，随 change 闭环更新）；取代"SPEC 留给 workbench"表述，同步 SKILL.md 架构文档节 + templates/schema.md
+
 ## 1.7.0 (2026-08-01)
 
 ### Added
