@@ -11,7 +11,7 @@ SKILL_NAME="qwiki"
 SKILLS_DIR="${HOME}/.hermes/skills"
 DEST="${SKILLS_DIR}/${SKILL_NAME}"
 
-get_version() { grep -m1 '^version:' "$1" | sed 's/^version:[[:space:]]*//' | tr -d '"'\'' '; }
+get_version() { grep -m1 '^version:' "$1" 2>/dev/null | sed 's/^version:[[:space:]]*//' | tr -d '"'\'' ' || true; }
 
 version_gt() { [ "$1" != "$2" ] && [ -n "$2" ] && [ "$(printf '%s\n%s\n' "$2" "$1" | sort -V | head -1)" = "$2" ]; }
 
