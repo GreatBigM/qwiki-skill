@@ -1,7 +1,7 @@
 ---
 name: qwiki
 description: Use when user says qwiki. Knowledge base management.
-version: 1.6.0
+version: 1.7.0
 author: Hermes Agent
 license: MIT
 category: knowledge
@@ -70,8 +70,9 @@ AI:  执行操作 → 回报结果
 4. 创建 INDEX.md（按 `templates/index.md` 模板生成：空表 + personal 分区 + 维护规则脚注）
 5. 创建 ROUTING.md（按 `templates/routing.md` 模板生成：检索链 7 级 + 降级路径 + 自生长规则 + 腐化检测 + 模板指引）
 6. 创建 SCHEMA.md（按 `templates/schema.md` 模板生成：宪法——目录结构/命名/纯度/卡片公约）
-7. `cd ~/qwiki && git add -A && git commit -m "init qwiki"`
-8. **SOUL.md 注入检测**：
+7. 创建 HISTORY.md（按 `templates/history.md` 模板生成：大事记档案——方法论定稿/架构决策/实践结论，事件粒度）
+8. `cd ~/qwiki && git add -A && git commit -m "init qwiki"`
+9. **SOUL.md 注入检测**：
    - 检查 `~/.hermes/SOUL.md` 是否已有「知识体系」节
    - 已有 → 跳过
    - 缺失 → 提示"SOUL.md 中未声明 qwiki 知识库，检索链不会自动生效。是否添加？"
@@ -237,5 +238,6 @@ INDEX 条目数、已入驻项目、codegraph 状态、知识文件数。
 
 本 skill 依赖以下模板与参考文件（安装时随 SKILL.md 一并打包，请勿删除）：
 
-- 模板：`templates/index.md`、`templates/routing.md`、`templates/schema.md`、`templates/card.md`、`templates/note.md`
+- init 模板（建库）：`templates/index.md`、`templates/routing.md`、`templates/schema.md`、`templates/history.md`
+- 卡片模板（生成卡）：`templates/card.md`、`templates/note.md`
 - 参考：`references/agents-md-structure.md`、`references/codegraph-quickstart.md`（下级接入参考，import 项目入驻时用）
