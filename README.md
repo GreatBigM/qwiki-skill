@@ -7,6 +7,9 @@ qwiki 让 AI 助理拥有一个 git 管理的知识库：项目知识卡片 + �
 ## 安装（推荐：tap 方式，官方一条命令）
 
 ```bash
+# 0. 建议先配置 GitHub token（避免匿名 API 限流：60 次/时，一次安装消耗多次调用）
+export GITHUB_TOKEN=<你的 GitHub personal access token>   # 或写入 ~/.bashrc / ~/.hermes/.env
+
 # 1. 添加本仓库为 skill 源（GitHub tap）
 hermes skills tap add GreatBigM/qwiki-skill
 
