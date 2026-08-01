@@ -8,6 +8,7 @@ category: knowledge
 metadata:
   hermes:
     tags: [knowledge-base, wiki, projects]
+    triggers: [qwiki, 知识库, 知识管理, wiki, 知识检索, 知识同步, 项目入驻, 知识卡片]
     related_skills: []
 ---
 
@@ -48,10 +49,11 @@ metadata:
    - 已安装 → 检索链含 codegraph 一环
    - 未安装 → 检索链自动降级到 search_files + read_file（可选增强：自行安装 codegraph 可提升代码检索效率，安装方法见 `references/codegraph-quickstart.md`）
 2. `mkdir -p ~/qwiki/personal ~/qwiki/projects`
-3. `cd ~/qwiki && git init && git add -A && git commit -m "init qwiki"`
+3. `cd ~/qwiki && git init`
 4. 创建 INDEX.md（按 `templates/index.md` 模板生成：空表 + personal 分区 + 维护规则脚注）
 5. 创建 ROUTING.md（按 `templates/routing.md` 模板生成：检索链 7 级 + 降级路径 + 自生长规则 + 腐化检测 + 模板指引）
-6. **SOUL.md 注入检测**：
+6. `cd ~/qwiki && git add -A && git commit -m "init qwiki"`
+7. **SOUL.md 注入检测**：
    - 检查 `~/.hermes/SOUL.md` 是否已有「知识体系」节
    - 已有 → 跳过
    - 缺失 → 提示"SOUL.md 中未声明 qwiki 知识库，检索链不会自动生效。是否添加？"
@@ -142,8 +144,8 @@ import 之后接力执行：检测项目历史知识（references/design/archive
 ## delete — 项目退出
 
 1. 确认操作
-2. 询问："是否同时删除 codegraph 索引库（/mnt/data/<项目名>/.codegraph/）？"
-3. 是 → `rm -rf /mnt/data/<项目名>/.codegraph/`
+2. 询问：“是否同时删除 codegraph 索引库（<代码路径>/.codegraph/）？”
+3. 是 → `rm -rf <代码路径>/.codegraph/`
 4. INDEX 删行
 5. `cd ~/qwiki && git rm -r projects/<项目名> && git commit -m "delete <项目名>"`
 

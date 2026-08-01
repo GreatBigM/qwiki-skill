@@ -26,7 +26,10 @@ curl -fsSL https://raw.githubusercontent.com/GreatBigM/qwiki-skill/main/install.
 git clone https://github.com/GreatBigM/qwiki-skill.git
 
 # 2. 复制到 Hermes 的 skills 目录（不经过安全扫描）
-cp -r qwiki-skill/skills/qwiki ~/.hermes/skills/qwiki
+mkdir -p ~/.hermes/skills/qwiki
+cp qwiki-skill/SKILL.md ~/.hermes/skills/qwiki/
+cp -r qwiki-skill/templates ~/.hermes/skills/qwiki/
+cp -r qwiki-skill/references ~/.hermes/skills/qwiki/
 
 # 3. 会话内 /reload-skills，或新开会话自动加载
 ```
