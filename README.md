@@ -2,7 +2,7 @@
 
 Hermes Agent 知识库管理技能（skill）—— 用九条命令管理你的二级知识库。
 
-qwiki 让 AI 助理拥有一个 git 管理的知识库：项目知识卡片 + 个人笔记 + 全局索引，按需加载、可检索、可沉淀。本仓库以 [skills.sh](https://skills.sh) 标准布局分发（`skills/qwiki/`），克隆后手动复制到 skills 目录即可用。
+qwiki 让 AI 助理拥有一个 git 管理的知识库：项目知识卡片 + 个人笔记 + 全局索引，按需加载、可检索、可沉淀。仓库根目录即 skill 本体，用一键脚本或手动复制安装。
 
 ## 安装（推荐：一键脚本）
 
@@ -71,10 +71,10 @@ qwiki deinit            # 全局拆除
 ```
 qwiki-skill/
 ├── README.md                        ← 本文件（仓库说明 + 安装方法）
-└── skills/qwiki/                    ← skill 本体（tap 安装源）
-    ├── SKILL.md                     ← 操作手册（九操作路由 + 详细步骤）
-    ├── templates/                   ← index / routing / card / note 四模板
-    └── references/                  ← spec / agents-md-structure / codegraph-quickstart
+├── install.sh                       ← 一键安装脚本
+├── SKILL.md                         ← 操作手册（九操作路由 + 详细步骤，仓库根即 skill）
+├── templates/                       ← index / routing / card / note 四模板
+└── references/                      ← spec / agents-md-structure / codegraph-quickstart
 ```
 
 ## 设计理念

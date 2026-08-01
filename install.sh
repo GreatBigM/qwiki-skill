@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 # qwiki skill 一键安装脚本
 # 用法: curl -fsSL https://raw.githubusercontent.com/GreatBigM/qwiki-skill/main/install.sh | bash
-# 等价于手动复制（git clone + cp -r），不经过 hermes skills install 的安全扫描
+# 等价于手动复制，不经过 hermes skills install 的安全扫描
 set -euo pipefail
 
 REPO_URL="https://github.com/GreatBigM/qwiki-skill.git"
-SKILL_SRC="skills/qwiki"
 SKILL_NAME="qwiki"
 SKILLS_DIR="${HOME}/.hermes/skills"
 DEST="${SKILLS_DIR}/${SKILL_NAME}"
@@ -26,7 +25,10 @@ if [ -d "${DEST}" ]; then
 fi
 
 echo "==> 安装到 ${DEST}"
-cp -r "${TMP}/repo/${SKILL_SRC}" "${DEST}"
+mkdir -p "${DEST}"
+cp "${TMP}/repo/SKILL.md" "${DEST}/"
+cp -r "${TMP}/repo/templates" "${DEST}/"
+cp -r "${TMP}/repo/references" "${DEST}/"
 
 echo ""
 echo "✅ qwiki skill 安装完成！"
