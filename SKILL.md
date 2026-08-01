@@ -1,7 +1,7 @@
 ---
 name: qwiki
 description: Use when user says qwiki. Knowledge base management.
-version: 1.5.0
+version: 1.6.0
 author: Hermes Agent
 license: MIT
 category: knowledge
@@ -228,11 +228,14 @@ INDEX 条目数、已入驻项目、codegraph 状态、知识文件数。
 
 ## 架构文档
 
-知识库宪法见 `~/qwiki/SCHEMA.md`（目录结构/命名/纯度/卡片公约：YAML 头、卡片身份、知识互联）——公约真相源在知识库内。skill 操作速览见本仓库 `references/spec.md`。
+- **SCHEMA.md**（`~/qwiki/SCHEMA.md`）= **做成什么样**：知识库宪法（目录结构/命名/纯度/卡片公约：YAML 头、卡片身份、知识互联）——目标态定义，真相源在知识库内，init 时由 `templates/schema.md` 创建
+- **本 SKILL.md** = **怎么做**：九操作流程——实现 SCHEMA 目标态的方法
+- 平级关系（2026-08-01 定稿）：SKILL 的每个操作都在实现 SCHEMA 定义的目标态（init 按蓝图建库、note 按卡片公约生成、import 按目录结构入驻），两者互补不重叠
+- 命名决策（2026-08-01）：SCHEMA（结构蓝图）长期代表知识库宪法；SPEC 一词留给 workbench 项目规格（projects/<项目>/spec.md），不混用
 
 ## 支持文件清单
 
 本 skill 依赖以下模板与参考文件（安装时随 SKILL.md 一并打包，请勿删除）：
 
 - 模板：`templates/index.md`、`templates/routing.md`、`templates/schema.md`、`templates/card.md`、`templates/note.md`
-- 参考：`references/spec.md`、`references/agents-md-structure.md`、`references/codegraph-quickstart.md`
+- 参考：`references/agents-md-structure.md`、`references/codegraph-quickstart.md`（下级接入参考，import 项目入驻时用）
