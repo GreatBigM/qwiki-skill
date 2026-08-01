@@ -1,7 +1,7 @@
 ---
 name: qwiki
 description: Use when user says qwiki. Knowledge base management.
-version: 1.7.1
+version: 1.7.2
 author: Hermes Agent
 license: MIT
 category: knowledge
@@ -232,7 +232,6 @@ INDEX 条目数、已入驻项目、codegraph 状态、知识文件数。
 - **SCHEMA.md**（`~/qwiki/SCHEMA.md`）= **做成什么样**：知识库宪法（目录结构/命名/纯度/卡片公约：YAML 头、卡片身份、知识互联）——目标态定义，真相源在知识库内，init 时由 `templates/schema.md` 创建
 - **本 SKILL.md** = **怎么做**：九操作流程——实现 SCHEMA 目标态的方法
 - 平级关系（2026-08-01 定稿）：SKILL 的每个操作都在实现 SCHEMA 定义的目标态（init 按蓝图建库、note 按卡片公约生成、import 按目录结构入驻），两者互补不重叠
-- 命名决策（2026-08-01）：按可变性分工——SCHEMA=不可更改的（宪法/蓝图），SPEC=可更改的（工程约束/当前规格，随 change 闭环更新）；不混用
 
 ## 支持文件清单
 

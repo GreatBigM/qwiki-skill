@@ -4,7 +4,6 @@
 > Last updated: <YYYY-MM-DD>（init 创建）
 
 > **定位**：SCHEMA = 做成什么样（知识库目标态）；SKILL = 怎么做（九操作流程）。平级互补：SKILL 的每个操作都在实现 SCHEMA 定义的目标态。
-> **命名决策**：按可变性分工——SCHEMA = 不可更改的（宪法/结构蓝图，如本文件）；SPEC = 可更改的（工程约束/当前规格，如 projects/<项目>/spec.md，随 change 闭环更新）。不混用。
 
 ---
 
