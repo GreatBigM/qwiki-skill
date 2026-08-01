@@ -1,7 +1,7 @@
 ---
 name: qwiki
 description: Use when user says qwiki. Knowledge base management.
-version: 1.8.3
+version: 1.8.4
 author: Hermes Agent
 license: MIT
 category: knowledge
@@ -182,20 +182,21 @@ import 之后接力执行：检测项目历史知识（references/design/archive
 ## sync — 日常同步
 
 1. `codegraph sync`（未安装则跳过，索引同步在无 codegraph 时不适用）
-2. 一致性校验（报告修复）：
+2. **宪法同步检查**（模板 ↔ 实例防漂移，见架构文档节）：对比 `~/qwiki/SCHEMA.md` 与 skill 模板 `templates/schema.md` 关键节（卡片身份/迁移规则/知识互联），发现语义漂移 → 报告用户确认后同步
+3. 一致性校验（报告修复）：
    - INDEX 死链/漏登记（登记行指向的文件是否存在）
    - **双链死链检测**：扫描全库 `[[...]]` 目标，对照知识库文件表（slug/项目-slug），报告悬空链接（见 `~/qwiki/SCHEMA.md` §知识互联）
-3. **知识腐化检测**（仅 codegraph 已安装时执行）：
+4. **知识腐化检测**（仅 codegraph 已安装时执行）：
    - 遍历 INDEX 中所有项目卡片
    - 提取「模块边界」中列出的关键文件路径
    - 对每个路径 `codegraph query` 验证是否仍在索引中
    - 缺失 → INDEX 对应条目标记 `⚠️ 待验证`，通知用户
-4. **防腐化判定**（按 `~/qwiki/SCHEMA.md` §卡片身份 活知识原则）：
+5. **防腐化判定**（按 `~/qwiki/SCHEMA.md` §卡片身份 活知识原则）：
    - 死链清单 → 修正引用
    - 与代码/实测矛盾的卡 → 修正内容
    - 完全不符合现实的卡 → 提出销毁建议（确认后删）
    - 孤岛（零入链）→ 标记冷门保留，不销毁
-5. `cd ~/qwiki && git add -A && git commit -m "sync $(date +%Y%m%d)"`（有变更时）
+6. `cd ~/qwiki && git add -A && git commit -m "sync $(date +%Y%m%d)"`（有变更时）
 
 ---
 
@@ -253,6 +254,14 @@ INDEX 条目数、已入驻项目、codegraph 状态、知识文件数。
 - **SCHEMA.md**（`~/qwiki/SCHEMA.md`）= **做成什么样**：知识库宪法（目录结构/命名/纯度/卡片公约：YAML 头、卡片身份、知识互联）——目标态定义，真相源在知识库内，init 时由 `templates/schema.md` 创建
 - **本 SKILL.md** = **怎么做**：九操作流程——实现 SCHEMA 目标态的方法
 - 平级关系（2026-08-01 定稿）：SKILL 的每个操作都在实现 SCHEMA 定义的目标态（init 按蓝图建库、note 按卡片公约生成、import 按目录结构入驻），两者互补不重叠
+
+### 模板 ↔ 实例同步（2026-08-02 定稿，防漂移）
+
+- **模板（`templates/schema.md`）只服务 init**：新库创建时按模板生成实例；已初始化知识库的 SCHEMA.md 是**活的宪法**，演进只发生在实例侧
+- 模板更新 ≠ 已初始化库自动跟随——**同步义务**：
+  1. 改模板（skill 侧变更）时，若影响既有实例语义（如本版 HISTORY.md 限定词），**必须同步修改 `~/qwiki/SCHEMA.md` 对应节**（本次 v1.8.3 已执行）
+  2. sync 操作增加「宪法同步检查」：对比实例 SCHEMA.md 与模板 schema.md 的关键节（卡片身份/迁移规则），发现漂移 → 报告用户确认后同步
+- 原则：**模板是 init 快照，实例是活文档**——两者允许短暂漂移，但关键语义变更（卡片公约/防腐化规则）必须手动同步，不能等腐化检测兜底
 
 ## 支持文件清单
 
