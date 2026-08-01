@@ -1,7 +1,7 @@
 ---
 name: qwiki
 description: Use when user says qwiki. Knowledge base management.
-version: 1.1.0
+version: 1.2.0
 author: Hermes Agent
 license: MIT
 category: knowledge
@@ -199,11 +199,12 @@ import 之后接力执行：检测项目历史知识（references/design/archive
 
 ## note — 随手笔记
 
-`qwiki note <标题>` → 创建 `~/qwiki/personal/<slug>.md` → INDEX 加一行。
+`qwiki note <标题>` → 按 `templates/note.md` 创建 `~/qwiki/personal/<slug>.md` → INDEX 加一行。
 
-- 不强制七段模板，写什么算什么
-- slug 从标题自动生成（小写+连字符）
-- 正文后续可随时补充
+- **必填动作**（生成时自动做）：YAML 头（title/date/tags）+ 一句话总结（`>` 行）+ 相关段
+- 一句话总结写入 INDEX 登记行，不用现场再读正文总结
+- 正文段落为参考骨架（背景/要点/结论），按需取舍，**不强制 schema**——写什么算什么，后续可随时补充
+- note 是轻量随笔，区别于八段模块卡；成熟后可升级为八段卡（蒸馏时机）
 - 和 import 的区别：note 无 codegraph、无 AGENTS、无项目目录，一条 INDEX 行 + 一个 .md
 - 写完后 `cd ~/qwiki && git add -A && git commit -m "note: <标题>"`
 

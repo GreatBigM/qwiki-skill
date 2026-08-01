@@ -2,6 +2,15 @@
 
 本文件记录版本历史。版本号定义在 SKILL.md frontmatter 的 `version` 字段（单一真相源）。
 
+## 1.2.0 (2026-08-01)
+
+### Added
+- note 模板丰富化（templates/note.md 3 行 → 完整轻量骨架）：YAML 头（title/date/tags）+ 一句话总结 + 相关段
+- 模板定位声明：YAML 头/一句话/相关段为 AI 生成必填动作（检索与 INDEX 登记依赖），正文段落（背景/要点/结论）为参考骨架不强制 schema
+
+### Changed
+- SKILL.md note 节对齐新模板：一句话总结自动写入 INDEX 登记行；note 成熟可升级为八段卡（蒸馏时机）
+
 ## 1.1.0 (2026-08-01)
 
 ### Added
