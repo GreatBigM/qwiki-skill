@@ -4,15 +4,23 @@ Hermes Agent 知识库管理技能（skill）—— 用九条命令管理你的�
 
 qwiki 让 AI 助理拥有一个 git 管理的知识库：项目知识卡片 + 个人笔记 + 全局索引，按需加载、可检索、可沉淀。仓库根目录即 skill 本体，用一键脚本或手动复制安装。
 
-## 安装（推荐：一键脚本）
+## 安装
+
+本 skill 支持多 agent 目标：Hermes / Claude Code / Codex。安装脚本自动探测本机已安装的 agent，让用户选择安装目标。
 
 ```bash
-curl -fsSL https://gitee.com/GreatBigM/qwiki-skill/raw/main/install.sh | bash
-# 安装后：会话内 /reload-skills，或新开会话自动加载
+# 方式 1：交互选择安装目标（推荐，先下载再执行以保留交互）
+curl -fsSL https://gitee.com/GreatBigM/qwiki-skill/raw/main/install.sh -o /tmp/install.sh && bash /tmp/install.sh
+
+# 方式 2：指定目标（非交互）
+curl -fsSL https://gitee.com/GreatBigM/qwiki-skill/raw/main/install.sh | bash -s -- --target hermes,claude
+
+# 方式 3：安装到全部检测到的 agent
+curl -fsSL https://gitee.com/GreatBigM/qwiki-skill/raw/main/install.sh | bash -s -- --all
 ```
 
 > 脚本等价于手动复制（clone + cp），不经过安全扫描，可先审阅脚本内容再执行。
-> 已安装时自动备份旧版本到 `~/.hermes/skills/qwiki.bak.<时间戳>`。
+> 已安装时自动备份旧版本到 `<skill_dir>.bak.<时间戳>`，重跑即升级（含版本对比提示）。
 
 ## 安装（备选：手动复制）
 
