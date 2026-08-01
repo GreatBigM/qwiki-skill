@@ -2,6 +2,12 @@
 
 本文件记录版本历史。版本号定义在 SKILL.md frontmatter 的 `version` 字段（单一真相源）。
 
+## 1.8.0 (2026-08-01)
+
+### Added
+- **hook 事件驱动层（善用 hook，SOUL 零改动）**：scripts/knowledge-sediment-*.sh 四脚本（on_session_end 写标记 / post_tool_call 信号检测 / pre_llm_call 指令注入 / subagent_stop 子代理产出）→ references/hermes-hooks.md 机制说明 → init 流程加 hook 注册检测
+- 自发生长升级为事件驱动：当前对话内即时触发（post_tool_call 感知代码修改/验证成功 → 下轮注入指令），无需等下次会话
+
 ## 1.7.7 (2026-08-01)
 
 ### Added
