@@ -2,6 +2,17 @@
 
 本文件记录版本历史。版本号定义在 SKILL.md frontmatter 的 `version` 字段（单一真相源）。
 
+## 1.3.0 (2026-08-01)
+
+### Added
+- YAML 头公约 v1（references/spec.md）：所有知识库文档统一 YAML 头，必填 title/type/date，推荐 summary/tags，可选 author/version/status/related
+- 排除项明确：INDEX/ROUTING/templates/AGENTS.md/spec.md 不纳入公约
+- note 模板对齐公约：YAML 增加 type: note；一句话总结约定为正文 `>` 引言行（note 类型不写 YAML summary，避免双写）
+
+### Changed
+- SKILL.md 引用公约（知识文件模板节）
+- 存量杂格式统一：8 个文件（4 中文键 + 2 skill frontmatter + 2 change 风格）转换为公约格式，来源/吸收至信息补入正文引用行
+
 ## 1.2.0 (2026-08-01)
 
 ### Added

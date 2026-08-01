@@ -1,7 +1,7 @@
 ---
 name: qwiki
 description: Use when user says qwiki. Knowledge base management.
-version: 1.2.0
+version: 1.3.0
 author: Hermes Agent
 license: MIT
 category: knowledge
@@ -219,6 +219,8 @@ INDEX 条目数、已入驻项目、codegraph 状态、知识文件数。
 ## 知识文件模板（八段）
 
 模块边界 / 职责描述 / 架构设计 / 技术栈 / 代码规范 / 配置命令 / 模块间关系 / 相关卡片
+
+> 所有知识库文档统一 YAML 头（title/type/date 必填），公约见 `references/spec.md` §YAML 头公约。
 
 ## 架构文档
 
