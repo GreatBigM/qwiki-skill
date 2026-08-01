@@ -2,6 +2,12 @@
 
 本文件记录版本历史。版本号定义在 SKILL.md frontmatter 的 `version` 字段（单一真相源）。
 
+## 1.8.2 (2026-08-02)
+
+### Fixed
+- **B1 实现补齐（v1.8.1 声明未落地）**：`knowledge-sediment-hint.sh` 重写为队列目录协议——python3 写 JSON 标记到 `~/.hermes/state/knowledge-sediment/`（纳秒时间戳文件名），session_id 完整保留；python3 缺失时静默退出不阻塞主流程。此前为单文件纯文本标记，与 inject.sh 的 json.load 协议不兼容导致 session_id 丢失
+- **B2 实现补齐（v1.8.1 声明未落地）**：`knowledge-sediment-subagent.sh` 改读顶层 `child_role/child_summary/child_status/parent_session_id`（hooks.py subagent_stop 协议），detail 不再恒为"子代理(未知)"；标记写入队列目录与 inject.sh 消费协议对齐
+
 ## 1.8.1 (2026-08-02)
 
 ### Fixed
