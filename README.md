@@ -4,12 +4,22 @@ Hermes Agent 知识库管理技能（skill）—— 用九条命令管理你的�
 
 qwiki 让 AI 助理拥有一个 git 管理的知识库：项目知识卡片 + 个人笔记 + 全局索引，按需加载、可检索、可沉淀。本仓库以 [skills.sh](https://skills.sh) 标准布局分发（`skills/qwiki/`），克隆后手动复制到 skills 目录即可用。
 
-## 安装（推荐：手动复制）
+## 安装（推荐：一键脚本）
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/GreatBigM/qwiki-skill/main/install.sh | bash
+# 安装后：会话内 /reload-skills，或新开会话自动加载
+```
+
+> 脚本等价于手动复制（clone + cp），不经过安全扫描，可先审阅脚本内容再执行。
+> 已安装时自动备份旧版本到 `~/.hermes/skills/qwiki.bak.<时间戳>`。
+
+## 安装（备选：手动复制）
 
 > ⚠️ 注意：`hermes skills install`（tap/URL 方式）对 qwiki 会触发安全扫描拦截——扫描器将
 > 「引用 AGENTS.md」「curl | sh 安装命令」等判定为 dangerous（误报，qwiki 本质是管理
 > AGENTS.md 的知识库 skill），且 community 来源 + dangerous 判定不可用 --force 绕过。
-> **请使用手动复制安装，不经过扫描。**
+> **请使用一键脚本或手动复制安装，不经过扫描。**
 
 ```bash
 # 1. 克隆本仓库
