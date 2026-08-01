@@ -21,6 +21,8 @@
     ├── spec.md                  ← 项目规格（项目文档，非卡片）
     └── references|design|archive/  ← 项目文档素材（自然淘汰，核心回填 INDEX）
     （AGENTS.md 在代码仓顶层 /mnt/data/<项目>/AGENTS.md，不在 qwiki 内——跨工具共享界面）
+
+跨项目公共知识：`projects/common/`（项目来源、跨项目适用——反模式/通用经验/工具坑；独立知识点一卡，按颗粒度拆分）
 ```
 
 ## INDEX 登记规则

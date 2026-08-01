@@ -1,7 +1,7 @@
 ---
 name: qwiki
 description: Use when user says qwiki. Knowledge base management.
-version: 1.7.6
+version: 1.7.7
 author: Hermes Agent
 license: MIT
 category: knowledge
@@ -65,7 +65,7 @@ AI:  执行操作 → 回报结果
 1. **codegraph 检测**：`which codegraph`
    - 已安装 → 检索链含 codegraph 一环
    - 未安装 → 检索链自动降级到 search_files + read_file（可选增强：自行安装 codegraph 可提升代码检索效率，安装方法见 `references/codegraph-quickstart.md`）
-2. `mkdir -p ~/qwiki/personal ~/qwiki/projects`
+2. `mkdir -p ~/qwiki/personal ~/qwiki/projects/common`
 3. `cd ~/qwiki && git init`
 4. 创建 INDEX.md（按 `templates/index.md` 模板生成：空表 + personal 分区 + 维护规则脚注）
 5. 创建 ROUTING.md（按 `templates/routing.md` 模板生成：检索链 7 级 + 降级路径 + 自生长规则 + 腐化检测 + 模板指引）
@@ -212,6 +212,10 @@ import 之后接力执行：检测项目历史知识（references/design/archive
 
 - **自动判断模式（自发生长）**：三触发源出现时 AI 直接建卡/更新，不等用户命令——
   ① 验证结论产生（实测/分析出结论）② 重复实践未命中知识点（查 INDEX 无对应卡且实践再现）③ 代码修改后对应卡需更新
+- **知识归属路由**（决定卡放哪）：
+  - 个人方法论/工作哲学 → `~/qwiki/personal/`
+  - 跨项目知识（反模式/通用经验/工具坑，来源项目、适用多项目）→ `~/qwiki/projects/common/`
+  - 项目特定知识 → 对应项目卡或 `references/`
 - **必填动作**（生成时自动做，三处一次填齐同一字符串）：YAML summary（真相源）+ 正文 `>` 行（渲染副本）+ INDEX 登记行
 - YAML 头按公约：title/type/date 必填 + summary 真相源 + tags
 - 相关段用 `[[slug]]` 双链（文档级链接，见 `~/qwiki/SCHEMA.md` §知识互联）
