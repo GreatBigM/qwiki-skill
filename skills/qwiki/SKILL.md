@@ -107,10 +107,10 @@ metadata:
 ### 步骤
 
 1. **现状检查**（先诊断后行动，2026-07-31 试点修正）：
-   - `ls <代码路径>/AGENTS.md` — 已有 → 进入「补充」模式：diff 检查是否过时，按 references/agents-md-structure.md 补齐缺失章节
+   - `ls <代码路径>/AGENTS.md` — 已有 → 进入「补充」模式：diff 检查是否过时，按 `references/agents-md-structure.md` 补齐缺失章节
    - `ls <代码路径>/.codegraph/` + `codegraph status` — 已有则跳过 init；新鲜度看 codegraph.db mtime
-2. 缺 codegraph 索引 → `codegraph init`（分析目录 → 配置排除规则 → init/index，详见 references/codegraph-quickstart.md）——**只需源码树，无环境依赖，永远先行**
-3. **四轮阅读 SDK**（上表，按 references/agents-md-structure.md 的 §1-§10 组织；编译入口按置信度分级：用户提供 > CI 配置 > 构建足迹 > 静态推导标注待验证）
+2. 缺 codegraph 索引 → `codegraph init`（分析目录 → 配置排除规则 → init/index，详见 `references/codegraph-quickstart.md`）——**只需源码树，无环境依赖，永远先行**
+3. **四轮阅读 SDK**（上表，按 `references/agents-md-structure.md` 的 §1-§10 组织；编译入口按置信度分级：用户提供 > CI 配置 > 构建足迹 > 静态推导标注待验证）
 4. **AGENTS.md 初版**：工程划分用多信号源交叉，编译相关章节标注"静态推导，待验证"；保留通用节结构
 5. `mkdir -p ~/qwiki/projects/<项目名>/`
 6. INDEX 追加项目区块
@@ -128,7 +128,7 @@ import 之后接力执行：检测项目历史知识（references/design/archive
 
 1. **老知识盘点**：`ls ~/qwiki/projects/<项目>/references|design|archive/` + INDEX 现有登记，确认遗产规模
 2. **核心模块识别**：高频调试/知识最丰富者优先，一次 1-3 个模块
-3. **蒸馏建卡**（templates/card.md 八段模板）：
+3. **蒸馏建卡**（`templates/card.md` 八段模板）：
    - 模块边界：search_files 确认文件清单（大库 codegraph query 可能超时；文件存在性验证走 search_files，符号/调用链才用 codegraph）
    - 素材：memory + 已有 references + 代码验证
    - 卡片是「导航 + 核心事实」，细节指向 references（相关卡片段），不搬运全文
@@ -203,4 +203,11 @@ INDEX 条目数、已入驻项目、codegraph 状态、知识文件数。
 
 ## 架构文档
 
-本仓库 references/spec.md（知识库目录结构规范）。知识库设计方法论演进记录见各版本架构文档。
+本仓库 `references/spec.md`（知识库目录结构规范）。知识库设计方法论演进记录见各版本架构文档。
+
+## 支持文件清单
+
+本 skill 依赖以下模板与参考文件（安装时随 SKILL.md 一并打包，请勿删除）：
+
+- 模板：`templates/index.md`、`templates/routing.md`、`templates/card.md`、`templates/note.md`
+- 参考：`references/spec.md`、`references/agents-md-structure.md`、`references/codegraph-quickstart.md`
