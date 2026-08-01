@@ -15,6 +15,5 @@
 ```
 代码仓 /mnt/data/<项目>/
 ├── AGENTS.md                    ← 跨工具通用界面
-├── .codegraph/                  ← 代码索引
-└── workbench/                   ← 任务管理（独立域）
+└── .codegraph/                  ← 代码索引
 ```
