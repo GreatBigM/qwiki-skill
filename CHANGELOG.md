@@ -2,6 +2,12 @@
 
 本文件记录版本历史。版本号定义在 SKILL.md frontmatter 的 `version` 字段（单一真相源）。
 
+## 1.7.6 (2026-08-01)
+
+### Changed
+- 发布侧脱敏：SKILL.md 移除内部技能名引用（capture-project-scope）；templates/schema.md 示例改通用占位符（hm6801→项目名、workbench 产物→项目文档）；references/codegraph-quickstart.md 移除内部技能名
+- 支持文件清单补 CHANGELOG.md（skills install 与 install.sh 两通道行为一致）
+
 ## 1.7.5 (2026-08-01)
 
 ### Added

@@ -18,7 +18,7 @@
 ├── personal/                    ← 个人笔记（qwiki note，随笔卡）
 └── projects/<项目>/             ← 项目知识
     ├── <模块名>.md              ← 模块卡（八段模板）
-    ├── spec.md                  ← 项目规格（workbench 产物，非卡片）
+    ├── spec.md                  ← 项目规格（项目文档，非卡片）
     └── references|design|archive/  ← 项目文档素材（自然淘汰，核心回填 INDEX）
     （AGENTS.md 在代码仓顶层 /mnt/data/<项目>/AGENTS.md，不在 qwiki 内——跨工具共享界面）
 ```
@@ -31,7 +31,7 @@
 
 ## 命名约定
 
-- **目录名**：全小写 + 连字符（`hm6801`、`_toolkit`）
+- **目录名**：全小写 + 连字符（`项目名`、`模块名`）
 - **文件名**：全小写 + 连字符（`flash-timing-benchmark.md`）
 - **项目内文件**：保留原有文件名不变（迁移时不动名字）
 
@@ -114,7 +114,7 @@ reference/design/change 是项目文档（workbench 产物），是卡片的素�
 
 卡片之间用 `[[slug]]` 双链互联（slug = 文件名去 .md，如 `[[workbench-spec]]`）：
 - **链接只指向文档，不做内容级（锚点/章节）链接**
-- 撞名消歧：`[[项目/slug]]`（如 `[[hm6502/aic8800-wifi-driver]]`）
+- 撞名消歧：`[[项目/slug]]`（如 `[[项目A/模块B]]`）
 - 可带说明：`[[slug]] — 引用说明`（相关段格式）
 - 反链 = 全库搜索 `[[slug]]` 出现处（search_files），即"谁引用了我"
 - 死链检测：sync 时扫描所有 `[[...]]` 目标，对照知识库文件表，报告悬空链接
