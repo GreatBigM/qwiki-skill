@@ -46,8 +46,7 @@ metadata:
    - 用户同意 → 备份旧 INDEX.md/ROUTING.md 为 .bak，继续
 1. **codegraph 检测**：`which codegraph`
    - 已安装 → 检索链含 codegraph 一环
-   - 未安装 → 提示"codegraph 未安装，代码检索将回落到 search_files（token 消耗较高）。建议安装：curl -fsSL https://raw.githubusercontent.com/colbymchenry/codegraph/main/install.sh | sh"
-   - 用户拒绝 → 检索链中 codegraph 环节回落到 search_files + read_file
+   - 未安装 → 检索链自动降级到 search_files + read_file（可选增强：自行安装 codegraph 可提升代码检索效率，安装方法见 `references/codegraph-quickstart.md`）
 2. `mkdir -p ~/qwiki/personal ~/qwiki/projects`
 3. `cd ~/qwiki && git init && git add -A && git commit -m "init qwiki"`
 4. 创建 INDEX.md（按 `templates/index.md` 模板生成：空表 + personal 分区 + 维护规则脚注）
@@ -109,7 +108,7 @@ metadata:
 1. **现状检查**（先诊断后行动，2026-07-31 试点修正）：
    - `ls <代码路径>/AGENTS.md` — 已有 → 进入「补充」模式：diff 检查是否过时，按 `references/agents-md-structure.md` 补齐缺失章节
    - `ls <代码路径>/.codegraph/` + `codegraph status` — 已有则跳过 init；新鲜度看 codegraph.db mtime
-2. 缺 codegraph 索引 → `codegraph init`（分析目录 → 配置排除规则 → init/index，详见 `references/codegraph-quickstart.md`）——**只需源码树，无环境依赖，永远先行**
+2. 缺 codegraph 索引 → 若已安装 codegraph：`codegraph init`（分析目录 → 配置排除规则 → init/index，详见 `references/codegraph-quickstart.md`）——**只需源码树，无环境依赖，永远先行**；未安装 → 跳过，检索走 search_files + read_file（降级路径，不阻塞 import）
 3. **四轮阅读 SDK**（上表，按 `references/agents-md-structure.md` 的 §1-§10 组织；编译入口按置信度分级：用户提供 > CI 配置 > 构建足迹 > 静态推导标注待验证）
 4. **AGENTS.md 初版**：工程划分用多信号源交叉，编译相关章节标注"静态推导，待验证"；保留通用节结构
 5. `mkdir -p ~/qwiki/projects/<项目名>/`
@@ -152,9 +151,9 @@ import 之后接力执行：检测项目历史知识（references/design/archive
 
 ## sync — 日常同步
 
-1. `codegraph sync`
+1. `codegraph sync`（未安装则跳过，索引同步在无 codegraph 时不适用）
 2. INDEX 一致性校验（死链/漏登记 → 报告修复）
-3. **知识腐化检测**：
+3. **知识腐化检测**（仅 codegraph 已安装时执行）：
    - 遍历 INDEX 中所有项目卡片
    - 提取「模块边界」中列出的关键文件路径
    - 对每个路径 `codegraph query` 验证是否仍在索引中
