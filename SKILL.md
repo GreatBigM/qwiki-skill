@@ -215,7 +215,7 @@ import 之后接力执行：检测项目历史知识（references/design/archive
 
 - **自动判断模式（自发生长）**：三触发源出现时 AI 直接建卡/更新，不等用户命令——
   ① 验证结论产生（实测/分析出结论）② 重复实践未命中知识点（查 INDEX 无对应卡且实践再现）③ 代码修改后对应卡需更新
-- **hook 事件驱动层**（善用 hook，任务嵌入事件点，SOUL 零改动）：`scripts/knowledge-sediment-*.sh` 四脚本注册到 config.yaml（on_session_end 写标记 / post_tool_call 信号检测 / pre_llm_call 指令注入 / subagent_stop 子代理产出）——机制说明见 `references/hermes-hooks.md`
+- **hook 事件驱动层**（善用 hook，任务嵌入事件点，SOUL 零改动）：`scripts/knowledge-sediment-hint.sh` / `toolcheck.sh` / `inject.sh` / `subagent.sh` 四脚本注册到 config.yaml（on_session_end 写标记 / post_tool_call 信号检测 / pre_llm_call 指令注入 / subagent_stop 子代理产出）——机制说明见 `references/hermes-hooks.md`
 - **知识归属路由**（决定卡放哪）：
   - 个人方法论/工作哲学 → `~/qwiki/personal/`
   - 跨项目知识（反模式/通用经验/工具坑，来源项目、适用多项目）→ `~/qwiki/projects/common/`
