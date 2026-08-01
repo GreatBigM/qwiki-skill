@@ -1,7 +1,7 @@
 ---
 name: qwiki
 description: Use when user says qwiki. Knowledge base management.
-version: 1.3.0
+version: 1.4.0
 author: Hermes Agent
 license: MIT
 category: knowledge
@@ -171,7 +171,9 @@ import 之后接力执行：检测项目历史知识（references/design/archive
 ## sync — 日常同步
 
 1. `codegraph sync`（未安装则跳过，索引同步在无 codegraph 时不适用）
-2. INDEX 一致性校验（死链/漏登记 → 报告修复）
+2. 一致性校验（报告修复）：
+   - INDEX 死链/漏登记（登记行指向的文件是否存在）
+   - **双链死链检测**：扫描全库 `[[...]]` 目标，对照知识库文件表（slug/项目-slug），报告悬空链接（见 `references/spec.md` §知识互联）
 3. **知识腐化检测**（仅 codegraph 已安装时执行）：
    - 遍历 INDEX 中所有项目卡片
    - 提取「模块边界」中列出的关键文件路径
@@ -197,14 +199,15 @@ import 之后接力执行：检测项目历史知识（references/design/archive
 
 ---
 
-## note — 随手笔记
+## note — 随手笔记（随笔卡）
 
 `qwiki note <标题>` → 按 `templates/note.md` 创建 `~/qwiki/personal/<slug>.md` → INDEX 加一行。
 
-- **必填动作**（生成时自动做）：YAML 头（title/date/tags）+ 一句话总结（`>` 行）+ 相关段
-- 一句话总结写入 INDEX 登记行，不用现场再读正文总结
+- **必填动作**（生成时自动做，三处一次填齐同一字符串）：YAML summary（真相源）+ 正文 `>` 行（渲染副本）+ INDEX 登记行
+- YAML 头按公约：title/type/date 必填 + summary 真相源 + tags
+- 相关段用 `[[slug]]` 双链（文档级链接，见 `references/spec.md` §知识互联）
 - 正文段落为参考骨架（背景/要点/结论），按需取舍，**不强制 schema**——写什么算什么，后续可随时补充
-- note 是轻量随笔，区别于八段模块卡；成熟后可升级为八段卡（蒸馏时机）
+- 卡片身份：note 是随笔卡（个人来源），与 card 模块卡（项目来源）同一身份；按需演进为模块卡（结构扩展，公约与链接不变）
 - 和 import 的区别：note 无 codegraph、无 AGENTS、无项目目录，一条 INDEX 行 + 一个 .md
 - 写完后 `cd ~/qwiki && git add -A && git commit -m "note: <标题>"`
 
@@ -218,9 +221,9 @@ INDEX 条目数、已入驻项目、codegraph 状态、知识文件数。
 
 ## 知识文件模板（八段）
 
-模块边界 / 职责描述 / 架构设计 / 技术栈 / 代码规范 / 配置命令 / 模块间关系 / 相关卡片
+模块边界 / 职责描述 / 架构设计 / 技术栈 / 代码规范 / 配置命令 / 模块间关系 / 相关
 
-> 所有知识库文档统一 YAML 头（title/type/date 必填），公约见 `references/spec.md` §YAML 头公约。
+> 卡片公共约定（见 `references/spec.md` §卡片身份）：YAML 头（title/type/date 必填 + summary 真相源）+ 一句话总结 + `[[slug]]` 双链 + 相关段。card=模块卡（八段），note=随笔卡（自由正文），同一身份不同形态。
 
 ## 架构文档
 
