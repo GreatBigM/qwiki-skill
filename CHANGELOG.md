@@ -2,6 +2,14 @@
 
 本文件记录版本历史。版本号定义在 SKILL.md frontmatter 的 `version` 字段（单一真相源）。
 
+## 1.6.0 (2026-08-01)
+
+### Changed
+- **references/spec.md 删除**：定位分歧根源（SPEC 既非"怎么做"也非"做成什么样"）；references/ 只留下级接入参考（codegraph-quickstart / agents-md-structure）
+- **SCHEMA/SKILL 平级定位定稿**（SKILL.md 架构文档节 + SCHEMA.md 顶部）：SCHEMA = 做成什么样（知识库目标态），SKILL = 怎么做（九操作流程），平级互补
+- **命名决策定稿**：SCHEMA（结构蓝图）长期代表知识库宪法；SPEC 留给 workbench 项目规格，不混用
+- SKILL.md 支持文件清单移除 references/spec.md
+
 ## 1.5.0 (2026-08-01)
 
 ### Added

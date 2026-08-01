@@ -3,6 +3,9 @@
 > qwiki 目录结构、命名约定、内容纯度标准、卡片公约（YAML 头/卡片身份/知识互联）。
 > Last updated: <YYYY-MM-DD>（init 创建）
 
+> **定位**：SCHEMA = 做成什么样（知识库目标态）；SKILL = 怎么做（九操作流程）。平级互补：SKILL 的每个操作都在实现 SCHEMA 定义的目标态。
+> **命名决策**：本文件用 SCHEMA（结构蓝图）长期代表知识库宪法；SPEC 一词留给 workbench 项目规格（projects/<项目>/spec.md），不混用。
+
 ---
 
 ## 目录结构
