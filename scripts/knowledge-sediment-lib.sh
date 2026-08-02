@@ -47,15 +47,19 @@ EVENT_MAP = {
     "PreCompact": "pre_compact",
     "PostCompact": "post_compact",
     "PreToolUse": "pre_tool",
-    # Codex (PascalCase)
-    "PreToolUse": "pre_tool",
-    "PostToolUse": "post_tool",
+    # Codex (snake_case，二进制实证：pre_tool_use/post_tool_use/user_prompt_submit/session_end 等)
+    "pre_tool_use": "pre_tool",
+    "post_tool_use": "post_tool",
+    "user_prompt_submit": "pre_llm",
+    "session_start": "session_start",
+    "session_end": "session_end",
+    "subagent_start": "subagent_start",
+    "subagent_stop": "subagent_stop",
+    "pre_compact": "pre_compact",
+    "post_compact": "post_compact",
+    # Codex PascalCase 兜底（部分版本可能用）
     "UserPromptSubmit": "pre_llm",
     "SessionEnd": "session_end",
-    "SubagentStop": "subagent_stop",
-    "SessionStart": "session_start",
-    "PreCompact": "pre_compact",
-    "PostCompact": "post_compact",
 }
 evt_raw = data.get("hook_event_name", "")
 evt = EVENT_MAP.get(evt_raw, "other")
