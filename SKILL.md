@@ -1,7 +1,7 @@
 ---
 name: qwiki
 description: Use when user says qwiki. Knowledge base management.
-version: 1.8.4
+version: 1.9.0
 author: Hermes Agent
 license: MIT
 category: knowledge
@@ -20,8 +20,8 @@ metadata:
 
 ```
 用户: qwiki import <项目> / 把项目录入知识库 / 同步知识库
-AI:  加载本 skill → 识别操作 → 检查依赖（codegraph/git/目录）
-AI:  对话层引导用户确认缺失项（安装 codegraph? git init? SOUL.md 注入?）
+AI:  加载本 skill → 识别操作 → 检查依赖（git/目录）
+AI:  对话层引导用户确认缺失项（git init?）
 用户: 确认/拒绝
 AI:  执行操作 → 回报结果
 ```
@@ -31,7 +31,7 @@ AI:  执行操作 → 回报结果
 
 > **AI 交互约定（agent 必读）**：
 > - 操作识别：用户说 "qwiki <操作>" 或自然语言意图（录入/同步/检索知识库），映射到九操作
-> - 依赖引导：环境依赖（codegraph 未装 / git 未初始化 / SOUL.md 未注入）→ 对话层询问用户是否处理，不静默跳过
+> - 依赖引导：环境依赖（git 未初始化）→ 对话层询问用户是否处理，不静默跳过
 > - 交互式设定优先：涉及路径/项目名等参数，AI 问清后写入，不让用户手动敲命令
 > - 执行回报：操作完成 + 关键结果（新卡片数/INDEX 更新/commit）
 
@@ -62,92 +62,73 @@ AI:  执行操作 → 回报结果
    - 已存在 → 提示"qwiki 知识库已存在（~/qwiki/）"，询问"是否重新初始化？（将覆盖 INDEX.md 和 ROUTING.md，知识文件保留）"
    - 用户拒绝 → 退出
    - 用户同意 → 备份旧 INDEX.md/ROUTING.md 为 .bak，继续
-1. **codegraph 检测**：`which codegraph`
-   - 已安装 → 检索链含 codegraph 一环
-   - 未安装 → 检索链自动降级到 search_files + read_file（可选增强：自行安装 codegraph 可提升代码检索效率，安装方法见 `references/codegraph-quickstart.md`）
-2. `mkdir -p ~/qwiki/personal ~/qwiki/projects/common`
-3. `cd ~/qwiki && git init`
-4. 创建 INDEX.md（按 `templates/index.md` 模板生成：空表 + personal 分区 + 维护规则脚注）
-5. 创建 ROUTING.md（按 `templates/routing.md` 模板生成：检索链 7 级 + 降级路径 + 自生长规则 + 腐化检测 + 模板指引）
-6. 创建 SCHEMA.md（按 `templates/schema.md` 模板生成：宪法——目录结构/命名/纯度/卡片公约）
-7. 创建 HISTORY.md（按 `templates/history.md` 模板生成：大事记档案——方法论定稿/架构决策/实践结论，事件粒度）
-8. `cd ~/qwiki && git add -A && git commit -m "init qwiki"`
-9. **SOUL.md 注入检测**：
-   - 检查 `~/.hermes/SOUL.md` 是否已有「知识体系」节
-   - 已有 → 跳过
-   - 缺失 → 提示"SOUL.md 中未声明 qwiki 知识库，检索链不会自动生效。是否添加？"
-   - Y → 追加知识体系节到 SOUL.md（含检索链 + L1/L2 说明）
-10. **hook 注册检测**（自发生长事件驱动层，仅 Hermes 环境）：
-   - 检查 `~/.hermes/config.yaml` 的 `hooks:` 是否已注册 4 个 knowledge-sediment 脚本（on_session_end/post_tool_call/pre_llm_call/subagent_stop）
-   - 缺失 → 提示"知识自动沉淀依赖 hook 事件驱动（代码修改即时感知/会话结束补沉淀）。是否注册？"→ Y → 按 `references/hermes-hooks.md` 注册 + 复制 `scripts/knowledge-sediment-*.sh` 到 `~/.hermes/scripts/`
+1. `mkdir -p ~/qwiki/personal ~/qwiki/projects/common`
+2. `cd ~/qwiki && git init`
+3. 创建 INDEX.md（按 `templates/index.md` 模板生成：空表 + personal 分区 + 维护规则脚注）
+4. 创建 ROUTING.md（按 `templates/routing.md` 模板生成：检索链 + 降级路径 + 自生长规则 + 腐化检测 + 模板指引）
+5. 创建 SCHEMA.md（按 `templates/schema.md` 模板生成：宪法——目录结构/命名/纯度/卡片公约）
+6. 创建 HISTORY.md（按 `templates/history.md` 模板生成：大事记档案——方法论定稿/架构决策/实践结论，事件粒度）
+7. `cd ~/qwiki && git add -A && git commit -m "init qwiki"`
+8. **hook 注册检测**（自发生长事件驱动层，跨工具通用）：
+   - 检测当前工具（Hermes `~/.hermes/config.yaml` / Claude `~/.claude/settings.json` / Codex `~/.codex/config.toml`）
+   - 检查该工具 hooks 是否已注册 knowledge-sediment 脚本（session_end/post_tool/pre_llm/subagent）
+   - 缺失 → 提示"知识自动沉淀依赖 hook 事件驱动（每轮检索引导 + 代码修改即时感知 + 会话结束补沉淀）。是否注册？"→ Y → 按 `references/hermes-hooks.md` 的注册表配置 + 复制 `scripts/knowledge-sediment-*.sh` 到工具 scripts 目录
 
-> **多 agent 降级说明**：init 第 9-10 步（SOUL.md 注入 + hook 注册）仅适用于 Hermes 环境。Claude Code / Codex 无 SOUL.md 和 hooks 机制，自动跳过这两步；知识管理功能（import/note/sync/explore 等）不受影响，仅失去事件驱动的自动沉淀触发。
+> **跨工具说明**：知识库本体（~/qwiki/）与工具无关，任何 agent（Hermes / Claude Code / Codex）都能读写。hook 事件驱动层三工具同构（事件名归一化由 `scripts/knowledge-sediment-lib.sh` 承担），检索引导由 inject.sh 每轮注入——SOUL.md 无需声明检索链（方案 A 定稿，2026-08-02）。
 
 ---
 
 ## deinit — 全局拆除
 
 1. 确认操作
-2. 询问："是否同时卸载 codegraph？"（如已安装）
-3. 是 → `codegraph uninstall` 或 `rm -rf ~/.codegraph/`
-4. **hook 清理**（与 init 注册对称）：
-   - 从 `~/.hermes/config.yaml` 移除 4 个 knowledge-sediment hook 注册项
-   - 删除 `~/.hermes/scripts/knowledge-sediment-*.sh`
+2. **hook 清理**（与 init 注册对称）：
+   - 从当前工具的 hooks 配置移除 knowledge-sediment 注册项
+   - 删除 scripts 目录的 `knowledge-sediment-*.sh`
    - 清空标记队列 `rm -rf ~/.hermes/state/knowledge-sediment/`
-5. **SOUL.md 清理**：检查并移除「知识体系」节（自动执行，不仅建议）
-6. `cd ~/qwiki && cd .. && mv qwiki qwiki.bak.$(date +%Y%m%d)`
+3. `cd ~/qwiki && cd .. && mv qwiki qwiki.bak.$(date +%Y%m%d)`
 
 ---
 
 ## import — 项目入驻（新增，保持纯粹）
 
-新项目从零入驻：AI 四轮阅读 SDK → codegraph 索引 → AGENTS.md 初版 → 目录骨架 → INDEX 登记。**不含卡片化**（卡片归 migrate 和日常蒸馏时机）。
+新项目从零入驻：AI 四轮阅读 SDK → 项目卡骨架 → 目录骨架 → INDEX 登记。**不含卡片化**（卡片归 migrate 和日常蒸馏时机）。
 
-输入：项目名、代码路径（编译入口/Docker 镜像**可选**——不依赖用户提供，见下）。
+输入：项目名、代码路径（可选——不依赖用户提供，见下）。
 
-### 核心原则（2026-07-31 讨论定稿）
+### 核心原则（2026-07-31 讨论定稿，2026-08-02 去 codegraph/AGENTS 依赖）
 
 1. **AI 读 SDK 本身就是在做 import**——用户不是信息源，只在"审阅初版"介入一次。用户提供不了编译入口/环境是常态，不阻塞流程
-2. **编译是可选精化，不是前提**——默认路径不依赖编译；bear 捕获只在编译可用时（用户给了 / AI 找到了 / ops 配好了）作为精化步骤
-3. **多信号源交叉**——无环境也能得出可靠工程划分：
+2. **多信号源交叉**——无环境也能得出可靠工程划分：
 
 | 信号 | 获取方式 | 环境依赖 |
 |------|---------|---------|
 | 目录结构 | ls / search_files | 无 |
 | 构建足迹 | Makefile/CMakeLists/Kconfig/feeds | 无 |
 | CI 配置 | .github/.gitlab-ci/Jenkinsfile（金矿：机器可读的编译流程） | 无 |
-| 符号调用链 | codegraph explore | 无 |
+| 源码阅读 | search_files + read_file（符号/调用链逐层追） | 无 |
 | manifest | repo 工具文件 | 无 |
-| 编译事实 | bear（可选精化） | 有 |
 
-4. **AGENTS.md 是逐步迭代的活文档**——import 只给"可用的初版 + 迭代机制"，允许不完整但必须标注待验证项；任务完成/认知加深/踩坑时更新（与 ROUTING 自生长规则同构）
+3. **项目知识卡是逐步迭代的活文档**——import 只给"可用的初版 + 迭代机制"，允许不完整但必须标注待验证项；任务完成/认知加深/踩坑时更新（与 ROUTING 自生长规则同构）
 
 ### 四轮阅读法（AI 读 SDK 的编排）
 
 ```
-第一轮：这是什么项目？   → 根目录结构/README/manifest/配置文件 → 项目概况 §1
-第二轮：怎么编译？       → 构建系统文件/CI/toolchain 痕迹 → 编译入口候选(置信度标注) + 工程划分 §2 §3
-第三轮：核心模块是什么？ → codegraph explore 主入口/核心符号(源码+调用链一次拿全) → 分层架构 §4 §5
-第四轮：哪里坑？怎么干活？→ 特殊机制/调试相关代码 → 工作流 §8 + 特殊机制 §6
+第一轮：这是什么项目？   → 根目录结构/README/manifest/配置文件 → 项目概况
+第二轮：怎么编译？       → 构建系统文件/CI/toolchain 痕迹 → 编译入口候选(置信度标注)
+第三轮：核心模块是什么？ → search_files/read_file 追主入口/核心符号 → 分层架构
+第四轮：哪里坑？怎么干活？→ 特殊机制/调试相关代码 → 工作流 + 特殊机制
 ```
 
 每轮阅读必须伴随**验证动作**（编译跑通/代码互证/交叉引用），不验证的读等于没读——读到的结论都要有验证痕迹。
 
 ### 步骤
 
-1. **现状检查**（先诊断后行动，2026-07-31 试点修正）：
-   - `ls <代码路径>/AGENTS.md` — 已有 → 进入「补充」模式：diff 检查是否过时，按 `references/agents-md-structure.md` 补齐缺失章节
-   - `ls <代码路径>/.codegraph/` + `codegraph status` — 已有则跳过 init；新鲜度看 codegraph.db mtime
-2. 缺 codegraph 索引 → 若已安装 codegraph：`codegraph init`（分析目录 → 配置排除规则 → init/index，详见 `references/codegraph-quickstart.md`）——**只需源码树，无环境依赖，永远先行**；未安装 → 跳过，检索走 search_files + read_file（降级路径，不阻塞 import）
-3. **四轮阅读 SDK**（上表，按 `references/agents-md-structure.md` 的 §1-§10 组织；编译入口按置信度分级：用户提供 > CI 配置 > 构建足迹 > 静态推导标注待验证）
-4. **AGENTS.md 初版**：工程划分用多信号源交叉，编译相关章节标注"静态推导，待验证"；保留通用节结构
-5. `mkdir -p ~/qwiki/projects/<项目名>/`
-6. INDEX 追加项目区块
-7. 提示"项目 <项目名> 入驻完成：AGENTS.md 初版（含待验证清单）。编译可用时执行 bear 校正精化（用编译事实替换静态推导）。若存在历史知识（references/design 等），执行 qwiki migrate <项目名> 做老知识迁移。"
-
-### 精化（可选，编译可用时）
-
-bear 全量捕获（编译入口捕获，方法见 `references/codegraph-quickstart.md`）→ 用编译事实替换静态推导 → 工程划分定稿。环境装配是 ops 的活，不在 import 流程内自动做。
+1. **现状检查**（先诊断后行动）：`ls <代码路径>/` — 已有项目知识卡 → 进入「补充」模式：diff 检查是否过时，按 `templates/card.md` 补齐缺失章节
+2. **四轮阅读 SDK**（上表；编译入口按置信度分级：用户提供 > CI 配置 > 构建足迹 > 静态推导标注待验证）
+3. **项目卡初版**：工程划分用多信号源交叉，编译相关章节标注"静态推导，待验证"
+4. `mkdir -p ~/qwiki/projects/<项目名>/`
+5. INDEX 追加项目区块
+6. 提示"项目 <项目名> 入驻完成：项目卡初版（含待验证清单）。若存在历史知识（references/design 等），执行 qwiki migrate <项目名> 做老知识迁移。"
 
 ---
 
@@ -158,7 +139,7 @@ import 之后接力执行：检测项目历史知识（references/design/archive
 1. **老知识盘点**：`ls ~/qwiki/projects/<项目>/references|design|archive/` + INDEX 现有登记，确认遗产规模
 2. **核心模块识别**：高频调试/知识最丰富者优先，一次 1-3 个模块
 3. **蒸馏建卡**（`templates/card.md` 八段模板）：
-   - 模块边界：search_files 确认文件清单（大库 codegraph query 可能超时；文件存在性验证走 search_files，符号/调用链才用 codegraph）
+   - 模块边界：search_files 确认文件清单
    - 素材：memory + 已有 references + 代码验证
    - 卡片是「导航 + 核心事实」，细节指向 references（相关卡片段），不搬运全文
 4. **INDEX 回填**：新卡登记 + 核心 references 补登记（旧日志/单次分析类按自然淘汰）
@@ -172,31 +153,23 @@ import 之后接力执行：检测项目历史知识（references/design/archive
 ## delete — 项目退出
 
 1. 确认操作
-2. 询问：“是否同时删除 codegraph 索引库（<代码路径>/.codegraph/）？”
-3. 是 → `rm -rf <代码路径>/.codegraph/`
-4. INDEX 删行
-5. `cd ~/qwiki && git rm -r projects/<项目名> && git commit -m "delete <项目名>"`
+2. INDEX 删行
+3. `cd ~/qwiki && git rm -r projects/<项目名> && git commit -m "delete <项目名>"`
 
 ---
 
 ## sync — 日常同步
 
-1. `codegraph sync`（未安装则跳过，索引同步在无 codegraph 时不适用）
-2. **宪法同步检查**（模板 ↔ 实例防漂移，见架构文档节）：对比 `~/qwiki/SCHEMA.md` 与 skill 模板 `templates/schema.md` 关键节（卡片身份/迁移规则/知识互联），发现语义漂移 → 报告用户确认后同步
-3. 一致性校验（报告修复）：
+1. **宪法同步检查**（模板 ↔ 实例防漂移，见架构文档节）：对比 `~/qwiki/SCHEMA.md` 与 skill 模板 `templates/schema.md` 关键节（卡片身份/迁移规则/知识互联），发现语义漂移 → 报告用户确认后同步
+2. 一致性校验（报告修复）：
    - INDEX 死链/漏登记（登记行指向的文件是否存在）
    - **双链死链检测**：扫描全库 `[[...]]` 目标，对照知识库文件表（slug/项目-slug），报告悬空链接（见 `~/qwiki/SCHEMA.md` §知识互联）
-4. **知识腐化检测**（仅 codegraph 已安装时执行）：
-   - 遍历 INDEX 中所有项目卡片
-   - 提取「模块边界」中列出的关键文件路径
-   - 对每个路径 `codegraph query` 验证是否仍在索引中
-   - 缺失 → INDEX 对应条目标记 `⚠️ 待验证`，通知用户
-5. **防腐化判定**（按 `~/qwiki/SCHEMA.md` §卡片身份 活知识原则）：
+3. **防腐化判定**（按 `~/qwiki/SCHEMA.md` §卡片身份 活知识原则）：
    - 死链清单 → 修正引用
    - 与代码/实测矛盾的卡 → 修正内容
    - 完全不符合现实的卡 → 提出销毁建议（确认后删）
    - 孤岛（零入链）→ 标记冷门保留，不销毁
-6. `cd ~/qwiki && git add -A && git commit -m "sync $(date +%Y%m%d)"`（有变更时）
+4. `cd ~/qwiki && git add -A && git commit -m "sync $(date +%Y%m%d)"`（有变更时）
 
 ---
 
@@ -210,7 +183,7 @@ import 之后接力执行：检测项目历史知识（references/design/archive
    - 第四条固定为 chat 选项 → "直接对话，让 AI 检索"
      AI 帮用户整理提示词、确认信息 → 确认后重新语义匹配 INDEX → 重复搜索动作
 3. 用户选择 → 加载对应知识文件或进入对话检索
-4. 无匹配 → "知识库中未找到相关条目，自动回落 AGENTS.md → codegraph → web_search"
+4. 无匹配 → "知识库中未找到相关条目，自动回落 web_search"
 
 `qwiki explore` — 输出 INDEX 全文概览
 
@@ -222,7 +195,7 @@ import 之后接力执行：检测项目历史知识（references/design/archive
 
 - **自动判断模式（自发生长）**：三触发源出现时 AI 直接建卡/更新，不等用户命令——
   ① 验证结论产生（实测/分析出结论）② 重复实践未命中知识点（查 INDEX 无对应卡且实践再现）③ 代码修改后对应卡需更新
-- **hook 事件驱动层**（善用 hook，任务嵌入事件点，SOUL 零改动）：`scripts/knowledge-sediment-*.sh` 四脚本注册到 config.yaml（on_session_end 写标记 / post_tool_call 信号检测 / pre_llm_call 读队列注入指令并消费标记 / subagent_stop 子代理产出）——标记写入队列目录 `~/.hermes/state/knowledge-sediment/`，inject 读后即删，不依赖 AI 清除——机制说明见 `references/hermes-hooks.md`
+- **hook 事件驱动层**（善用 hook，任务嵌入事件点，跨工具通用）：`scripts/knowledge-sediment-*.sh` 注册到当前工具 hooks（Hermes config.yaml / Claude settings.json / Codex config.toml）——session_end 写标记 / post_tool 信号检测 / pre_llm 每轮注入检索引导+读队列沉淀指令 / subagent_stop 子代理产出——标记写入队列目录 `~/.hermes/state/knowledge-sediment/`，inject 读后即删。三工具 payload 经 `scripts/knowledge-sediment-lib.sh` 归一化（一个脚本吃三种），机制说明见 `references/hermes-hooks.md`
 - **知识归属路由**（决定卡放哪）：
   - 个人方法论/工作哲学 → `~/qwiki/personal/`
   - 跨项目知识（反模式/通用经验/工具坑，来源项目、适用多项目）→ `~/qwiki/projects/common/`
@@ -232,14 +205,14 @@ import 之后接力执行：检测项目历史知识（references/design/archive
 - 相关段用 `[[slug]]` 双链（文档级链接，见 `~/qwiki/SCHEMA.md` §知识互联）
 - 正文段落为参考骨架（背景/要点/结论），按需取舍，**不强制 schema**——写什么算什么，后续可随时补充
 - 卡片身份：note 是随笔卡（个人来源），与 card 模块卡（项目来源）同一身份；按需演进为模块卡（结构扩展，公约与链接不变）
-- 和 import 的区别：note 无 codegraph、无 AGENTS、无项目目录，一条 INDEX 行 + 一个 .md
+- 和 import 的区别：note 无项目目录，一条 INDEX 行 + 一个 .md
 - 写完后 `cd ~/qwiki && git add -A && git commit -m "note: <标题>"`
 
 ---
 
 ## status — 查看状态
 
-INDEX 条目数、已入驻项目、codegraph 状态、知识文件数。
+INDEX 条目数、已入驻项目、知识文件数。
 
 ---
 
@@ -259,9 +232,15 @@ INDEX 条目数、已入驻项目、codegraph 状态、知识文件数。
 
 - **模板（`templates/schema.md`）只服务 init**：新库创建时按模板生成实例；已初始化知识库的 SCHEMA.md 是**活的宪法**，演进只发生在实例侧
 - 模板更新 ≠ 已初始化库自动跟随——**同步义务**：
-  1. 改模板（skill 侧变更）时，若影响既有实例语义（如本版 HISTORY.md 限定词），**必须同步修改 `~/qwiki/SCHEMA.md` 对应节**（本次 v1.8.3 已执行）
+  1. 改模板（skill 侧变更）时，若影响既有实例语义（如 HISTORY.md 限定词），**必须同步修改 `~/qwiki/SCHEMA.md` 对应节**
   2. sync 操作增加「宪法同步检查」：对比实例 SCHEMA.md 与模板 schema.md 的关键节（卡片身份/迁移规则），发现漂移 → 报告用户确认后同步
 - 原则：**模板是 init 快照，实例是活文档**——两者允许短暂漂移，但关键语义变更（卡片公约/防腐化规则）必须手动同步，不能等腐化检测兜底
+
+### 解耦声明（2026-08-02 定稿，v1.9.0）
+
+- **本 skill 与 AGENTS.md / codegraph 无关**：不生成 AGENTS.md、不依赖 codegraph 索引、references 不含 codegraph-quickstart.md
+- 代码检索由各工具自身能力承担（search_files/read_file 或工具内置代码索引如 codegraph MCP）——qwiki 只管理知识库本体（~/qwiki/）
+- 检索引导由 hook 注入（inject.sh 每轮注入"先查知识库"），SOUL.md 无需声明检索链
 
 ## 支持文件清单
 
@@ -269,6 +248,6 @@ INDEX 条目数、已入驻项目、codegraph 状态、知识文件数。
 
 - init 模板（建库）：`templates/index.md`、`templates/routing.md`、`templates/schema.md`、`templates/history.md`
 - 卡片模板（生成卡）：`templates/card.md`、`templates/note.md`
-- hook 脚本（自发生长事件驱动）：`scripts/knowledge-sediment-hint.sh`、`scripts/knowledge-sediment-toolcheck.sh`、`scripts/knowledge-sediment-inject.sh`、`scripts/knowledge-sediment-subagent.sh`
-- 参考：`references/agents-md-structure.md`、`references/codegraph-quickstart.md`（下级接入参考，import 项目入驻时用）、`references/hermes-hooks.md`（hook 机制说明）
+- hook 脚本（自发生长事件驱动，三工具兼容）：`scripts/knowledge-sediment-lib.sh`（归一化层）+ `scripts/knowledge-sediment-hint.sh`、`scripts/knowledge-sediment-toolcheck.sh`、`scripts/knowledge-sediment-inject.sh`、`scripts/knowledge-sediment-subagent.sh`
+- 参考：`references/hermes-hooks.md`（hook 机制说明 + 三工具注册表）
 - 版本记录：`CHANGELOG.md`（随安装拷贝，记录版本历史）

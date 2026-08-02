@@ -1,35 +1,39 @@
 #!/bin/bash
 # subagent_stop hook：子代理产出知识信号（团队协作场景沉淀）
-# 子代理（coder/tester/reviewer/ops）完成 → 写标记到队列目录 → pre_llm_call 注入"检查子代理产出知识点"
+# 兼容 Hermes / Claude Code / Codex（payload 经归一化层统一）
 # 注意：payload 经环境变量传给 python（heredoc 会覆盖 stdin）
 
-export HOOK_PAYLOAD="$(cat)"
-# python3 缺失时静默退出（hook 不应阻塞主流程）
+SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=knowledge-sediment-lib.sh
+source "$SELF_DIR/knowledge-sediment-lib.sh"
+
 command -v python3 &>/dev/null || exit 0
-python3 << 'EOF'
-import sys, json, os, time
 
-try:
-    d = json.loads(os.environ.get("HOOK_PAYLOAD", "{}"))
-except Exception:
-    sys.exit(0)
+# 读 stdin（hook 协议）
+payload=$(cat)
+export HOOK_PAYLOAD="$payload"
 
-# subagent_stop 真实 payload：顶层 child_role/child_summary（见 hooks.py subagent_stop 协议）
-role = d.get("child_role", "") or ""
-summary = d.get("child_summary", "") or ""
-status = d.get("child_status", "") or ""
-parent_session_id = d.get("parent_session_id", "") or d.get("session_id", "unknown")
+sediment_normalize_payload
 
-queue_dir = os.path.expanduser("~/.hermes/state/knowledge-sediment")
-os.makedirs(queue_dir, exist_ok=True)
+# 仅处理子代理结束事件
+sediment_is "subagent_stop" || exit 0
 
-entry = {"time": time.strftime("%Y-%m-%d %H:%M:%S"),
-         "type": "subagent_done",
-         "detail": f"子代理({role or '未知'})完成[{status or ''}]: {(summary or '')[:60]}",
-         "session_id": parent_session_id}
-fname = f"{time.time_ns()}-subagent_done.json"
-with open(os.path.join(queue_dir, fname), "w") as f:
-    json.dump(entry, f, ensure_ascii=False)
-sys.exit(0)
-EOF
+# detail 已由归一化层合成：role|child_status|summary
+QUEUE_DIR="$HOME/.hermes/state/knowledge-sediment"
+mkdir -p "$QUEUE_DIR"
+
+python3 - "$QUEUE_DIR" "$SEDIMENT_DETAIL" "$SEDIMENT_SESSION" <<'PYEOF'
+import json, os, sys, time
+qdir, detail, sid = sys.argv[1], sys.argv[2], sys.argv[3]
+marker = {
+    "time": time.strftime("%Y-%m-%d %H:%M:%S"),
+    "type": "subagent_done",
+    "detail": detail,
+    "session_id": sid or "",
+}
+fn = f"{time.time_ns()}-subagent_done.json"
+with open(os.path.join(qdir, fn), "w") as f:
+    json.dump(marker, f)
+PYEOF
+
 exit 0
