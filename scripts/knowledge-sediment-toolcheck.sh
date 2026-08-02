@@ -1,54 +1,88 @@
 #!/bin/bash
-# post_tool_call hook：知识信号检测（当前对话内触发）
-# 检测工具调用：代码修改 → 写“待更新卡”标记；验证成功 → 写“验证结论”标记
-# 标记写入队列目录，被 pre_llm_call hook 读取并消费（读后即删，不等下次会话）
-# 注意：payload 经环境变量传给 python（heredoc 会覆盖 stdin）
+# post_tool_call hook：代码修改/验证成功信号检测 → 写沉淀标记
+# 兼容 Hermes / Claude Code / Codex（payload 经归一化层统一）
 
-payload=$(cat)
-# python3 缺失时静默退出（hook 不应阻塞主流程）
+SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=knowledge-sediment-lib.sh
+source "$SELF_DIR/knowledge-sediment-lib.sh"
+
 command -v python3 &>/dev/null || exit 0
+
+# 读 stdin（hook 协议）
+payload=$(cat)
 export HOOK_PAYLOAD="$payload"
-python3 << 'EOF'
-import sys, json, os, time
 
+sediment_normalize_payload
+
+# 仅处理工具调用后事件
+sediment_is "post_tool" || exit 0
+
+# 代码修改检测：write_file / patch / edit / apply_patch 等
+case "$SEDIMENT_TOOL" in
+  write_file|write|patch|edit|apply_patch|edit_file|replace|multi_edit)
+    # 文件路径从 detail 或 payload 提取（归一化层未单独提，此处从原始 payload 提取）
+    fpath=$(echo "$payload" | python3 -c "
+import json,sys
 try:
-    d = json.loads(os.environ.get("HOOK_PAYLOAD", "{}"))
+    d=json.load(sys.stdin)
+    a=d.get('args',{}) or {}
+    t=d.get('tool_input',{}) or {}
+    p=a.get('path') or t.get('path') or t.get('file_path') or a.get('file_path') or ''
+    print(p)
 except Exception:
-    sys.exit(0)
+    print('')
+" 2>/dev/null)
+    if [ -n "$fpath" ]; then
+      QUEUE_DIR="$HOME/.hermes/state/knowledge-sediment"
+      mkdir -p "$QUEUE_DIR"
+      python3 - "$QUEUE_DIR" "$fpath" "$SEDIMENT_SESSION" <<'PYEOF'
+import json, os, sys, time
+qdir, fpath, sid = sys.argv[1], sys.argv[2], sys.argv[3]
+marker = {
+    "time": time.strftime("%Y-%m-%d %H:%M:%S"),
+    "type": "code_change",
+    "detail": f"文件: {fpath}",
+    "session_id": sid or "",
+}
+fn = f"{time.time_ns()}-code_change.json"
+with open(os.path.join(qdir, fn), "w") as f:
+    json.dump(marker, f)
+PYEOF
+    fi
+    ;;
+  # 验证成功检测：terminal/bash 命令 + 退出码 0
+  terminal|bash|shell|exec|command)
+    # 归一化层已算 status；命令内容从 payload 提取
+    cmd=$(echo "$payload" | python3 -c "
+import json,sys
+try:
+    d=json.load(sys.stdin)
+    a=d.get('args',{}) or {}
+    t=d.get('tool_input',{}) or {}
+    p=a.get('command') or t.get('command') or a.get('cmd') or t.get('cmd') or ''
+    print(p[:200])
+except Exception:
+    print('')
+" 2>/dev/null)
+    # 验证类命令模式：build/compile/test/check/verify/烧录
+    if echo "$cmd" | grep -qiE '(build|compile|make|test|check|verify|flash|burn|烧录|编译)'; then
+      QUEUE_DIR="$HOME/.hermes/state/knowledge-sediment"
+      mkdir -p "$QUEUE_DIR"
+      python3 - "$QUEUE_DIR" "$cmd" "$SEDIMENT_STATUS" "$SEDIMENT_SESSION" <<'PYEOF'
+import json, os, sys, time
+qdir, cmd, status, sid = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+marker = {
+    "time": time.strftime("%Y-%m-%d %H:%M:%S"),
+    "type": "verify_done",
+    "detail": f"命令: {cmd} | 状态: {status}",
+    "session_id": sid or "",
+}
+fn = f"{time.time_ns()}-verify_done.json"
+with open(os.path.join(qdir, fn), "w") as f:
+    json.dump(marker, f)
+PYEOF
+    fi
+    ;;
+esac
 
-tool = d.get("tool_name", "")
-args = d.get("args", {}) if isinstance(d.get("args"), dict) else {}
-result = d.get("result", "") or ""
-status = d.get("status", "ok")
-session_id = d.get("session_id", "unknown")
-
-queue_dir = os.path.expanduser("~/.hermes/state/knowledge-sediment")
-os.makedirs(queue_dir, exist_ok=True)
-
-def write_marker(mtype, detail):
-    entry = {"time": time.strftime("%Y-%m-%d %H:%M:%S"), "type": mtype,
-             "detail": detail, "session_id": session_id}
-    fname = f"{time.time_ns()}-{mtype}.json"
-    with open(os.path.join(queue_dir, fname), "w") as f:
-        json.dump(entry, f, ensure_ascii=False)
-
-# 信号 1：代码修改（patch / write_file）
-if tool in ("patch", "write_file"):
-    path = args.get("path", "")
-    if path:
-        write_marker("code_change", f"修改文件: {path}")
-        sys.exit(0)
-
-# 信号 2：编译/烧录/测试类命令成功（terminal）
-if tool == "terminal":
-    cmd = args.get("command", "")
-    low = cmd.lower()
-    if status == "ok" and any(k in low for k in
-        ("make ", "build", "cmake", "flash", "烧录", "编译", "qwiki", "sync")):
-        write_marker("verify_done", f"命令: {cmd[:80]}")
-        sys.exit(0)
-
-# 无信号 → 静默
-sys.exit(0)
-EOF
 exit 0

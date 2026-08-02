@@ -25,7 +25,11 @@
   - `subagent_stop` 顶层字段：`parent_session_id/child_role/child_summary/child_status/tool_call_history/duration_ms`
 - **stdout**（JSON 可选）：`{"context": "..."}` → pre_llm_call 注入 LLM 上下文；`{"decision": "block", ...}` → pre_tool_call 拦截；空/非匹配 JSON → 静默
 
-## 注册（config.yaml）
+## 注册（三工具注册表，2026-08-02 跨工具落地）
+
+> 同一套脚本（`scripts/knowledge-sediment-*.sh`），三种注册方式。payload 差异由 `knowledge-sediment-lib.sh` 归一化（事件名/字段映射），脚本本身工具无关。
+
+### Hermes（config.yaml）
 
 ```yaml
 hooks:
@@ -40,6 +44,45 @@ hooks:
 ```
 
 首次触发需 consent（allowlist `~/.hermes/shell-hooks-allowlist.json`）；非 TTY 需 `hooks_auto_accept: true` 或 `--accept-hooks`。验证：`hermes hooks list / test <event> / doctor`。
+
+### Claude Code（settings.json）
+
+```json
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {"hooks": [{"type": "command", "command": "~/.claude/scripts/knowledge-sediment-inject.sh"}]}
+    ],
+    "PostToolUse": [
+      {"hooks": [{"type": "command", "command": "~/.claude/scripts/knowledge-sediment-toolcheck.sh"}]}
+    ],
+    "SessionEnd": [
+      {"hooks": [{"type": "command", "command": "~/.claude/scripts/knowledge-sediment-hint.sh"}]}
+    ],
+    "SubagentStop": [
+      {"hooks": [{"type": "command", "command": "~/.claude/scripts/knowledge-sediment-subagent.sh"}]}
+    ]
+  }
+}
+```
+
+> Claude 已有 `UserPromptSubmit → codegraph prompt-hook`（检索引导）——可保留（代码检索引导）或替换为本 inject.sh（知识库检索引导），二选一或并存（inject 先跑输出 context，codegraph 再补充）。
+
+### Codex（config.toml）
+
+```toml
+[hooks]
+  [hooks.UserPromptSubmit]
+  command = "~/.codex/scripts/knowledge-sediment-inject.sh"
+  [hooks.PostToolUse]
+  command = "~/.codex/scripts/knowledge-sediment-toolcheck.sh"
+  [hooks.SessionEnd]
+  command = "~/.codex/scripts/knowledge-sediment-hint.sh"
+  [hooks.SubagentStop]
+  command = "~/.codex/scripts/knowledge-sediment-subagent.sh"
+```
+
+> Codex hooks 语法以 `codex --help` + 官方 config 文档为准（0.146.0 已确认事件枚举 PreToolUse/PostToolUse/SessionEnd/SubagentStop/UserPromptSubmit/PreCompact/PostCompact）。
 
 ## 沉淀链路（标记 → 注入 → 执行）
 

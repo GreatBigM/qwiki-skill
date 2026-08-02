@@ -2,6 +2,15 @@
 
 本文件记录版本历史。版本号定义在 SKILL.md frontmatter 的 `version` 字段（单一真相源）。
 
+## 1.9.0 (2026-08-02)
+
+### Changed（架构升级：跨工具 + 解耦）
+- **三工具 hook 兼容（方案 A 落地）**：新增 `scripts/knowledge-sediment-lib.sh` 归一化层——事件名/字段映射统一 Hermes / Claude Code / Codex 三种 payload（一个脚本吃三种），15/15 兼容性测试通过（verify-compat 脚本验证后移除）
+- **inject.sh 双重职责**：无条件注入检索引导（替代 SOUL 静态检索链声明）+ 有标记时追加沉淀指令（读后即删不变）
+- **解耦 AGENTS.md / codegraph**：import 不再生成 AGENTS.md、sync 不再依赖 codegraph 索引；references 删除 `agents-md-structure.md`、`codegraph-quickstart.md`；检索链简化为 memory → INDEX → 知识文件 → 模型知识 → web_search（代码检索由各工具自身能力承担）
+- **SOUL.md 知识体系节精简**为一行兜底（检索引导由 hook 每轮注入）
+- **hermes-hooks.md 升级为三工具注册表**：Hermes config.yaml / Claude settings.json / Codex config.toml
+
 ## 1.8.4 (2026-08-02)
 
 ### Fixed
