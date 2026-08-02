@@ -70,19 +70,21 @@ hooks:
 
 ### Codex（config.toml）
 
+> Codex 事件名是 snake_case（二进制实证：`post_tool_use`/`user_prompt_submit`/`session_end`/`subagent_stop`，与 Hermes 同构）。配置语法 `[hooks.<event>]` + `command`：
+
 ```toml
 [hooks]
-  [hooks.UserPromptSubmit]
-  command = "~/.codex/scripts/knowledge-sediment-inject.sh"
-  [hooks.PostToolUse]
-  command = "~/.codex/scripts/knowledge-sediment-toolcheck.sh"
-  [hooks.SessionEnd]
-  command = "~/.codex/scripts/knowledge-sediment-hint.sh"
-  [hooks.SubagentStop]
-  command = "~/.codex/scripts/knowledge-sediment-subagent.sh"
+  [hooks.user_prompt_submit]
+  command = "bash ~/.codex/scripts/knowledge-sediment-inject.sh"
+  [hooks.post_tool_use]
+  command = "bash ~/.codex/scripts/knowledge-sediment-toolcheck.sh"
+  [hooks.session_end]
+  command = "bash ~/.codex/scripts/knowledge-sediment-hint.sh"
+  [hooks.subagent_stop]
+  command = "bash ~/.codex/scripts/knowledge-sediment-subagent.sh"
 ```
 
-> Codex hooks 语法以 `codex --help` + 官方 config 文档为准（0.146.0 已确认事件枚举 PreToolUse/PostToolUse/SessionEnd/SubagentStop/UserPromptSubmit/PreCompact/PostCompact）。
+> Codex 0.146.0 事件枚举已实证（PreToolUse/PostToolUse/SessionStart/SessionEnd/SubagentStart/SubagentStop/UserPromptSubmit/PreCompact/PostCompact）；`timeout_sec`/`matcher` 等字段以 `codex --help` + 官方 config 文档为准。首次启用需 trust（`codex` TUI hooks 管理或 `--dangerously-bypass-hook-trust` 仅自动化场景）。
 
 ## 沉淀链路（标记 → 注入 → 执行）
 
