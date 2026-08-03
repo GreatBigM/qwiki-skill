@@ -6,4 +6,4 @@
 
 ## <YYYY-MM-DD>
 
-- （init 创建：知识库建立，INDEX/ROUTING/SCHEMA/HISTORY 四件套就位）
+- （init 创建：知识库建立，INDEX/HISTORY 就位——宪法随 skill，库内不放置）

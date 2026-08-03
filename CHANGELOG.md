@@ -2,6 +2,17 @@
 
 本文件记录版本历史。版本号定义在 SKILL.md frontmatter 的 `version` 字段（单一真相源）。
 
+## 2.0.0 (2026-08-03)
+
+### Changed（SCHEMA 单一真相源收敛，库内不放置实例）
+- **~/qwiki/SCHEMA.md 实例删除**：宪法唯一真相源在本 skill 根目录 `SCHEMA.md`（随 skill 发布/安装）。原知识库实例 = 第三层 copy（仓库 → 安装目录 → 知识库），已真实漂移（实例改 [[module-slug]] 示例、skill 快照漏同步，workbench-spec 死链示例残留）——双头维护风险实锤
+- **init 不再生成 SCHEMA.md**：知识库骨架 = INDEX/HISTORY + 目录；卡片公约由加载 skill 时读取根目录 SCHEMA.md
+- **sync 移除「宪法同步检查」**：无实例可对比；保留一致性校验 + 防腐化判定（判定依据改指 skill 根目录 SCHEMA.md）
+- **模板 ↔ 实例同步机制废除**：无实例可同步——宪法变更 = 改 SCHEMA.md + bump 版本 + 发布
+- SCHEMA.md 目录树移除自身行；YAML 头排除项改「索引与档案文件」；双链示例修死链（workbench-spec → module-slug）
+- templates/history.md 四件套表述改两件套（INDEX/HISTORY）
+- 版本 1.9.6 → 2.0.0
+
 ## 1.9.6 (2026-08-03)
 
 ### Changed
