@@ -12,17 +12,30 @@
 #   SEDIMENT_DETAIL   : 事件细节文本（工具结果摘要 / 子代理信息 / 空）
 #   SEDIMENT_PROMPT   : 用户 prompt（pre_llm_call / UserPromptSubmit 用）
 #   SEDIMENT_CWD      : 工作目录
+#   SEDIMENT_QUEUE_DIR: 标记队列目录（XDG 约定，跨工具共享）
+
+# 队列目录单一真相源（四脚本统一引用，改路径只动这里）
+export SEDIMENT_QUEUE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/qwiki/sediment"
 
 sediment_normalize_payload() {
   # 读 stdin（heredoc 保护：hook 脚本内 stdin 已被 consume，用环境变量传入）
   local payload="${HOOK_PAYLOAD:-$(cat)}"
 
+  # payload 经临时文件传给 python（大 payload 如编译日志直传 argv 会触 ARG_MAX）
+  local pfile
+  pfile=$(mktemp "${TMPDIR:-/tmp}/sediment.XXXXXX")
+  printf '%s' "$payload" > "$pfile"
+
   # python3 归一化：三工具事件名/字段差异在此收敛
   local norm
-  norm=$(python3 - "$payload" <<'PYEOF'
-import json, sys, re
+  norm=$(python3 - "$pfile" <<'PYEOF'
+import json, sys
 
-raw = sys.argv[1] if len(sys.argv) > 1 else ""
+try:
+    with open(sys.argv[1], errors="replace") as f:
+        raw = f.read()
+except Exception:
+    raw = ""
 try:
     data = json.loads(raw) if raw.strip() else {}
 except Exception:
@@ -57,9 +70,16 @@ EVENT_MAP = {
     "subagent_stop": "subagent_stop",
     "pre_compact": "pre_compact",
     "post_compact": "post_compact",
-    # Codex PascalCase 兜底（部分版本可能用）
+    # Codex PascalCase（hooks.json 实证：hook_event_name 字段为 PascalCase）
     "UserPromptSubmit": "pre_llm",
+    "PostToolUse": "post_tool",
+    "PreToolUse": "pre_tool",
+    "Stop": "session_end",
     "SessionEnd": "session_end",
+    "SubagentStop": "subagent_stop",
+    "SubagentStart": "subagent_start",
+    "PreCompact": "pre_compact",
+    "PostCompact": "post_compact",
 }
 evt_raw = data.get("hook_event_name", "")
 evt = EVENT_MAP.get(evt_raw, "other")
@@ -109,6 +129,7 @@ for k, v in out.items():
     print(f"SEDIMENT_{k.upper()}='{v}'")
 PYEOF
 )
+  rm -f "$pfile"
 
   # 将归一化结果 eval 为环境变量（脚本内可见）
   eval "$norm" 2>/dev/null || true

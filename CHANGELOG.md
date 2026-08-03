@@ -2,6 +2,30 @@
 
 本文件记录版本历史。版本号定义在 SKILL.md frontmatter 的 `version` 字段（单一真相源）。
 
+## 1.9.2 (2026-08-02)
+
+### Changed
+- **Codex hook 注册迁移至 hooks.json**：Codex CLI 不支持 config.toml 内联 hook，改用 `~/.codex/hooks.json`（三层 JSON 结构：event → entries → hooks[]）。事件名 PascalCase（`PostToolUse`/`Stop`/`SubagentStop`）
+- **Codex Stop 门禁模式**：hint.sh 在 Codex Stop 事件上读队列标记 → 有标记时输出 `{"decision":"block","reason":"沉淀指令"}` 强制 AI 在结束前执行沉淀（连续 block 8 次后 CLI 自动放行）。`stop_hook_active` 从原始 payload 提取防无限循环
+- **Codex inject.sh 不注册**：Codex `UserPromptSubmit` 不处理 hook 输出（`additionalContext` 不被支持），且 inject.sh 读后即删会提前消费标记导致 Stop 门禁看不到。Codex 的沉淀注入由 hint.sh Stop 门禁承担
+- **lib.sh EVENT_MAP 补全 Codex PascalCase 映射**：`Stop`→`session_end`、`PostToolUse`→`post_tool`、`SubagentStop`→`subagent_stop` 等（经 hooks.json + dump 实证确认）
+
+### Fixed
+- **hermes-hooks.md Codex 段重写**：config.toml 格式替换为 hooks.json 格式，事件全景表 Codex 列改为 PascalCase，stdout 协议补 Codex Stop `decision:block` 通道
+- **Codex 端到端验证通过**：预置 verify_done 标记 → toolcheck 写新标记 → Stop 门禁触发 block → 模型执行沉淀（建卡+INDEX+commit）→ 第二次 Stop 放行
+
+## 1.9.1 (2026-08-02)
+
+### Fixed
+- **P0 verify_done 状态回归**：toolcheck.sh 补回 `[ "$SEDIMENT_STATUS" = "success" ]` 前置检查——v1.9.0 重写时丢失，失败构建也会写“验证成功”标记
+- **P3 payload 传递 ARG_MAX 风险**：lib.sh 归一化层改经临时文件传 payload（原 argv 直传大 payload 如编译日志会触 128KB 单参数上限）
+- **P1 README 全面对齐 v1.9.x**：移除已删除文件引用（agents-md-structure/codegraph-quickstart）、依赖表去 codegraph、手动复制补 scripts/、检索链简化、仓库结构树更新
+
+### Changed
+- **队列目录迁移至 XDG 约定**：`~/.hermes/state/knowledge-sediment/` → `${XDG_STATE_HOME:-~/.local/state}/qwiki/sediment/`，路径单一真相源定义于 lib.sh `SEDIMENT_QUEUE_DIR`（四脚本统一引用，跨工具语义中性）
+- hermes-hooks.md 标题/事件全景改三工具视角（归一化事件 → 三工具事件名映射表）
+- templates/schema.md 目录结构去 Hermes 字样（跨工具定位）
+
 ## 1.9.0 (2026-08-02)
 
 ### Changed（架构升级：跨工具 + 解耦）
