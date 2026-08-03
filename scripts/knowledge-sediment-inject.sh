@@ -2,13 +2,13 @@
 # pre_llm_call / UserPromptSubmit hook：检索引导 + 沉淀指令注入
 # 兼容 Hermes / Claude Code / Codex（payload 经归一化层统一）
 #
-# 双重职责：
-#   1. 无条件：注入"先查知识库"检索引导（方案 A，替代 SOUL 静态检索链声明）
-#   2. 有标记：追加沉淀指令（队列目录读后即删）
+# 输出协议：{"context": "..."} → 注入 LLM 上下文
+# 注意：Codex UserPromptSubmit 不处理 hook 输出（静默忽略），
+#       Codex 的沉淀注入由 hint.sh Stop 门禁承担
 #
-# stdout 协议：{"context": "<指令>"} → 注入 LLM 上下文；空输出 → 静默
-# 注意：Claude/Codex 的 UserPromptSubmit 输出会 append 到 user message，
-#       必须保持输出精炼（检索引导 ~40 token）
+# 职责：
+#   1. 无条件：注入"先查知识库"检索引导
+#   2. 有标记：追加沉淀指令（队列读后即删）
 
 SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=knowledge-sediment-lib.sh
@@ -22,18 +22,16 @@ export HOOK_PAYLOAD="$payload"
 
 sediment_normalize_payload
 
-# 仅处理 LLM 调用前事件（Hermes pre_llm_call / Claude+Codex UserPromptSubmit）
+# 仅处理 LLM 调用前事件
 sediment_is "pre_llm" || exit 0
 
 # ---- 输出构造 ----
-QUEUE_DIR="$HOME/.hermes/state/knowledge-sediment"
-
-python3 - "$QUEUE_DIR" "$SEDIMENT_PROMPT" <<'PYEOF'
+python3 - "$SEDIMENT_QUEUE_DIR" "$SEDIMENT_PROMPT" <<'PYEOF'
 import json, os, sys
 
 qdir, prompt = sys.argv[1], sys.argv[2]
 
-# 检索引导（固定注入，每轮生效）——方案 A 定稿：检索链单一真相源在此
+# 检索引导（固定注入，每轮生效）——检索链单一真相源在此
 guide = "【知识库检索】涉及项目/技术/历史问题先查 ~/qwiki：INDEX.md（全局目录）→ 知识文件（projects/<项目>/ 或 personal/）→ 相关卡；查不到再凭经验或 web。沉淀规则：验证结论/代码修改/子代理产出自动写卡（≤5 页/会话）。"
 
 # 沉淀指令（有标记才追加）
@@ -53,7 +51,6 @@ if files:
         except Exception:
             continue
     if marks:
-        # 汇总类型
         types = [m.get("type", "?") for m in marks]
         details = [m.get("detail", "") for m in marks if m.get("detail")]
         t_sum = "/".join(sorted(set(types)))

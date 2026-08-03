@@ -33,9 +33,8 @@ except Exception:
     print('')
 " 2>/dev/null)
     if [ -n "$fpath" ]; then
-      QUEUE_DIR="$HOME/.hermes/state/knowledge-sediment"
-      mkdir -p "$QUEUE_DIR"
-      python3 - "$QUEUE_DIR" "$fpath" "$SEDIMENT_SESSION" <<'PYEOF'
+      mkdir -p "$SEDIMENT_QUEUE_DIR"
+      python3 - "$SEDIMENT_QUEUE_DIR" "$fpath" "$SEDIMENT_SESSION" <<'PYEOF'
 import json, os, sys, time
 qdir, fpath, sid = sys.argv[1], sys.argv[2], sys.argv[3]
 marker = {
@@ -50,9 +49,10 @@ with open(os.path.join(qdir, fn), "w") as f:
 PYEOF
     fi
     ;;
-  # 验证成功检测：terminal/bash 命令 + 退出码 0
+  # 验证成功检测：terminal/bash 命令 + 状态成功
   terminal|bash|shell|exec|command)
-    # 归一化层已算 status；命令内容从 payload 提取
+    # 归一化层已算 status；仅成功命令才算验证（失败构建不写标记）
+    [ "$SEDIMENT_STATUS" = "success" ] || exit 0
     cmd=$(echo "$payload" | python3 -c "
 import json,sys
 try:
@@ -66,9 +66,8 @@ except Exception:
 " 2>/dev/null)
     # 验证类命令模式：build/compile/test/check/verify/烧录
     if echo "$cmd" | grep -qiE '(build|compile|make|test|check|verify|flash|burn|烧录|编译)'; then
-      QUEUE_DIR="$HOME/.hermes/state/knowledge-sediment"
-      mkdir -p "$QUEUE_DIR"
-      python3 - "$QUEUE_DIR" "$cmd" "$SEDIMENT_STATUS" "$SEDIMENT_SESSION" <<'PYEOF'
+      mkdir -p "$SEDIMENT_QUEUE_DIR"
+      python3 - "$SEDIMENT_QUEUE_DIR" "$cmd" "$SEDIMENT_STATUS" "$SEDIMENT_SESSION" <<'PYEOF'
 import json, os, sys, time
 qdir, cmd, status, sid = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 marker = {

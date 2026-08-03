@@ -1,6 +1,6 @@
-# Hermes Hook 机制（qwiki 自发生长基础设施）
+# Hook 机制（qwiki 自发生长基础设施，跨工具）
 
-> 2026-08-01 定稿。qwiki 知识自动生成的事件驱动层——hook 是触发器（写标记/注入指令），沉淀是 AI 的活（加载本 skill 执行）。
+> 2026-08-02 定稿。qwiki 知识自动生成的事件驱动层——hook 是触发器（写标记/注入指令），沉淀是 AI 的活（加载本 skill 执行）。三工具（Hermes/Claude Code/Codex）同构，payload 差异由 `scripts/knowledge-sediment-lib.sh` 归一化。
 
 ## 原理：为什么用 hook 不用 SOUL
 
@@ -8,22 +8,26 @@
 - hook 是事件驱动（工具调用/会话生命周期触发）——任务嵌入事件点，SOUL 零改动
 - 分发友好：hook 脚本 + config 注册可随 skill 打包，协作者装上即生效
 
-## 事件全景（VALID_HOOKS，agent 源码 plugins.py）
+## 事件全景（三工具事件名 → 归一化类型）
 
-| 事件 | 时机 | 用法 |
-|------|------|------|
-| `post_tool_call` | 每次工具调用后 | 信号检测：代码修改/验证成功 → 写标记 |
-| `pre_llm_call` | 每次 LLM 调用前 | 有标记 → 注入 `{"context": "指令"}`（append 到 user message，缓存前缀稳定） |
-| `on_session_end` | 会话结束时 | 写"待沉淀"标记（下次会话补沉淀） |
-| `subagent_stop` | 子代理完成 | 子代理产出 → 写标记（团队场景沉淀） |
-| `pre_tool_call` / `post_llm_call` / `on_session_start` / `transform_*` | — | 按需扩展（信号检测/统计阈值等） |
+| 归一化事件 | Hermes | Claude Code | Codex | 用法 |
+|------|------|------|------|------|
+| `post_tool` | post_tool_call | PostToolUse | PostToolUse | 信号检测：代码修改/验证成功 → 写标记 |
+| `pre_llm` | pre_llm_call | UserPromptSubmit | UserPromptSubmit | 每轮注入检索引导 + 有标记追加沉淀指令（Codex 不处理输出，沉淀由 Stop 门禁承担） |
+| `session_end` | on_session_end | SessionEnd | Stop | 写"待沉淀"标记（Codex Stop 门禁：有标记则 block 强制沉淀） |
+| `subagent_stop` | subagent_stop | SubagentStop | SubagentStop | 子代理产出 → 写标记（团队场景沉淀） |
 
 ## Wire 协议（stdin/stdout）
 
 - **stdin**（JSON 管道）：`{"hook_event_name": "...", "session_id": "...", "cwd": "...", ...事件特定字段}`——事件字段在**顶层**，无 `extra` 嵌套（源码 hooks.py 确认，2026-08-02 修 B3）
   - `post_tool_call` 顶层字段：`tool_name/args/result/status/duration_ms/task_id/tool_call_id`
   - `subagent_stop` 顶层字段：`parent_session_id/child_role/child_summary/child_status/tool_call_history/duration_ms`
-- **stdout**（JSON 可选）：`{"context": "..."}` → pre_llm_call 注入 LLM 上下文；`{"decision": "block", ...}` → pre_tool_call 拦截；空/非匹配 JSON → 静默
+- **stdout**（JSON 可选）：
+  - `pre_llm_call`（Hermes/Claude）：`{"context": "..."}` → 注入 LLM 上下文
+  - `Stop`（Codex）：`{"decision": "block", "reason": "..."}` → 强制 AI 继续执行沉淀
+  - `pre_tool_call`（Hermes/Claude）：`{"decision": "block", ...}` → 拦截
+  - 空/非匹配 JSON → 静默
+  - **注意**：Codex `UserPromptSubmit` 不处理 hook 输出（`additionalContext` 不被支持）
 
 ## 注册（三工具注册表，2026-08-02 跨工具落地）
 
@@ -68,33 +72,50 @@ hooks:
 
 > Claude 已有 `UserPromptSubmit → codegraph prompt-hook`（检索引导）——可保留（代码检索引导）或替换为本 inject.sh（知识库检索引导），二选一或并存（inject 先跑输出 context，codegraph 再补充）。
 
-### Codex（config.toml）
+### Codex（hooks.json）
 
-> Codex 事件名是 snake_case（二进制实证：`post_tool_use`/`user_prompt_submit`/`session_end`/`subagent_stop`，与 Hermes 同构）。配置语法 `[hooks.<event>]` + `command`：
+> Codex hook 配置文件为 `~/.codex/hooks.json`（用户级）或项目级 `.codex/hooks.json`。
+> 事件名 PascalCase，三层 JSON 结构：event → entries(matcher) → hooks[] 数组。
+> **注意**：Codex `UserPromptSubmit` 不处理 hook 输出（静默忽略），`additionalContext` 不被支持。
+> 沉淀注入通过 `Stop` 事件的 `decision: "block"` + `reason` 强制 AI 在结束前执行沉淀（Stop 门禁模式）。
+> 因此 `inject.sh` **不注册**到 Codex（避免标记被提前消费，Stop 门禁看不到）。
 
-```toml
-[hooks]
-  [hooks.user_prompt_submit]
-  command = "bash ~/.codex/scripts/knowledge-sediment-inject.sh"
-  [hooks.post_tool_use]
-  command = "bash ~/.codex/scripts/knowledge-sediment-toolcheck.sh"
-  [hooks.session_end]
-  command = "bash ~/.codex/scripts/knowledge-sediment-hint.sh"
-  [hooks.subagent_stop]
-  command = "bash ~/.codex/scripts/knowledge-sediment-subagent.sh"
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {"hooks": [{"type": "command", "command": "bash ~/.codex/scripts/knowledge-sediment-toolcheck.sh"}]}
+    ],
+    "Stop": [
+      {"hooks": [{"type": "command", "command": "bash ~/.codex/scripts/knowledge-sediment-hint.sh"}]}
+    ],
+    "SubagentStop": [
+      {"hooks": [{"type": "command", "command": "bash ~/.codex/scripts/knowledge-sediment-subagent.sh"}]}
+    ]
+  }
+}
 ```
 
-> Codex 0.146.0 事件枚举已实证（PreToolUse/PostToolUse/SessionStart/SessionEnd/SubagentStart/SubagentStop/UserPromptSubmit/PreCompact/PostCompact）；`timeout_sec`/`matcher` 等字段以 `codex --help` + 官方 config 文档为准。首次启用需 trust（`codex` TUI hooks 管理或 `--dangerously-bypass-hook-trust` 仅自动化场景）。
+> **Stop 门禁模式**（hint.sh 在 Codex 上的特殊行为）：
+> 读队列标记 → 有标记且 `stop_hook_active=false` → 输出 `{"decision":"block","reason":"沉淀指令"}` → 强制 AI 在结束前执行沉淀 → 连续 block 8 次后 CLI 自动放行。
+> `stop_hook_active` 从原始 payload 提取（防无限循环）。
+>
+> **Codex 事件名实证**（hooks.json + dump 确认，2026-08-02）：
+> `UserPromptSubmit`/`PostToolUse`/`PreToolUse`/`Stop`/`SessionEnd`/`SubagentStop`/`SubagentStart`/`PreCompact`/`PostCompact`。
+> payload 字段 snake_case（`session_id`/`cwd`/`prompt`/`tool_name`/`stop_hook_active`/`last_assistant_message`）。
+> 首次启用需 trust（`codex` TUI hooks 管理或 `--dangerously-bypass-hook-trust` 仅自动化场景）。
 
 ## 沉淀链路（标记 → 注入 → 执行）
 
 ```
-队列目录 ~/.hermes/state/knowledge-sediment/（每个事件一个 JSON 文件：<纳秒时间戳>-<type>.json）
+队列目录 ${XDG_STATE_HOME:-~/.local/state}/qwiki/sediment/（每个事件一个 JSON 文件：<纳秒时间戳>-<type>.json，路径定义于 lib.sh SEDIMENT_QUEUE_DIR）
   type=code_change  代码修改（含文件路径）→ 注入"按模块边界匹配更新卡"
   type=verify_done  验证成功（含命令）   → 注入"结论按归属路由沉淀"
   type=session_end  会话结束            → 注入"检索最近会话知识点"
   type=subagent_done 子代理产出         → 注入"检查子代理产出知识点"
 inject.sh 读取全部标记 → 合并为一条指令注入 → 读后即删（确定性生命周期，不依赖 AI 清除）
+  ⚠ Codex：inject.sh 不注册（UserPromptSubmit 输出被忽略，且读后即删会提前消费标记）
+  Codex 的沉淀注入由 hint.sh Stop 门禁承担（Stop 时读标记 → block 强制沉淀）
 执行：加载本 skill → 按归属路由建卡/更新（个人→personal/，跨项目→projects/common/，项目→项目卡）
 ```
 

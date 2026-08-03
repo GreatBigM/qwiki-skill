@@ -19,10 +19,9 @@ sediment_normalize_payload
 sediment_is "subagent_stop" || exit 0
 
 # detail 已由归一化层合成：role|child_status|summary
-QUEUE_DIR="$HOME/.hermes/state/knowledge-sediment"
-mkdir -p "$QUEUE_DIR"
+mkdir -p "$SEDIMENT_QUEUE_DIR"
 
-python3 - "$QUEUE_DIR" "$SEDIMENT_DETAIL" "$SEDIMENT_SESSION" <<'PYEOF'
+python3 - "$SEDIMENT_QUEUE_DIR" "$SEDIMENT_DETAIL" "$SEDIMENT_SESSION" <<'PYEOF'
 import json, os, sys, time
 qdir, detail, sid = sys.argv[1], sys.argv[2], sys.argv[3]
 marker = {
