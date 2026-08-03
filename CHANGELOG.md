@@ -2,6 +2,11 @@
 
 本文件记录版本历史。版本号定义在 SKILL.md frontmatter 的 `version` 字段（单一真相源）。
 
+## 1.9.6 (2026-08-03)
+
+### Changed
+- **SCHEMA.md 提升至 skill 根目录，与 SKILL.md 平级**：`templates/schema.md` 移至根目录改名 `SCHEMA.md`。templates/ 语义 = 可替换的参考模板（模板定位哲学），宪法不可替换——物理位置应表达概念平级（2026-08-01 定稿的平级关系此前只有文字，无物理结构支撑）。install.sh 拷贝清单 +1（SCHEMA.md）；SKILL.md 引用 4 处改路径；README 无引用不动
+
 ## 1.9.5 (2026-08-03)
 
 ### Removed
