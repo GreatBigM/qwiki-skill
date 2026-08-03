@@ -73,6 +73,15 @@ install_one() {
         [ -d "${TMP}/repo/${d}" ] && cp -r "${TMP}/repo/${d}" "${dest}/"
     done
     cp "${TMP}/repo/CHANGELOG.md" "${dest}/" 2>/dev/null || true
+
+    # hook 脚本同步: 工具 hook 注册引用 ~/.<tool>/scripts/, 升级时一并对齐, 防「只装 skill、hook 跑旧脚本」盲区
+    hook_dir="${dest_dir%/skills}/scripts"
+    if [ -d "${dest}/scripts" ]; then
+        mkdir -p "${hook_dir}"
+        cp "${dest}"/scripts/knowledge-sediment-*.sh "${hook_dir}/" 2>/dev/null || true
+        echo "    同步 hook 脚本 → ${hook_dir}"
+    fi
+
     echo "    ✅ ${label}: ${SKILL_NAME} 已安装"
 }
 

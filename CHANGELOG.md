@@ -2,6 +2,11 @@
 
 本文件记录版本历史。版本号定义在 SKILL.md frontmatter 的 `version` 字段（单一真相源）。
 
+## 1.9.3 (2026-08-03)
+
+### Fixed
+- **install.sh hook 脚本同步**：升级时把 `scripts/knowledge-sediment-*.sh` 一并同步到工具 hook 目录（`~/.hermes/scripts/`、`~/.claude/scripts/`、`~/.codex/scripts/`，即 `${dest_dir%/skills}/scripts`）。修复「只装 skill、hook 跑旧脚本」的覆盖盲区——各工具 hook 注册（config.yaml / settings.json / hooks.json）引用的是工具 scripts 目录而非 skill 目录，之前升级 skill 后需手动同步脚本
+
 ## 1.9.2 (2026-08-02)
 
 ### Changed
