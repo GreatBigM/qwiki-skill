@@ -1,9 +1,9 @@
 # qwiki SCHEMA
 
 > qwiki 目录结构、命名约定、内容纯度标准、卡片公约（YAML 头/卡片身份/知识互联）。
-> Last updated: <YYYY-MM-DD>（init 创建）
+> Last updated: 2026-08-03（v2.0.0：宪法唯一真相源在本 skill，知识库内不放置实例）
 
-> **定位**：SCHEMA = 做成什么样（知识库目标态）；SKILL = 怎么做（九操作流程）。平级互补：SKILL 的每个操作都在实现 SCHEMA 定义的目标态。
+> **定位（2026-08-01 定稿）**：SCHEMA = 做成什么样（知识库目标态）；SKILL = 怎么做（九操作流程）。平级互补：SKILL 的每个操作都在实现 SCHEMA 定义的目标态。
 
 ---
 
@@ -12,7 +12,6 @@
 ```
 ~/qwiki/                          ← AI 知识库（git 管理，跨工具共享）
 ├── INDEX.md                     ← 全局知识目录，一张平表（检索总入口）
-├── SCHEMA.md                    ← 本文（宪法：目录结构+命名+纯度+卡片公约）
 ├── HISTORY.md                   ← 变更记录
 ├── personal/                    ← 个人笔记（qwiki note，随笔卡）
 └── projects/<项目>/             ← 项目知识
@@ -58,7 +57,7 @@
 
 ## YAML 头公约（v1）
 
-所有知识库文档（`projects/**/` 与 `personal/` 下的 .md）统一 YAML 头。排除：INDEX.md/SCHEMA.md/HISTORY.md（索引与宪法文件）、templates/（模板本身）、projects/<项目>/spec.md（workbench 项目规格，另立规矩）。
+所有知识库文档（`projects/**/` 与 `personal/` 下的 .md）统一 YAML 头。排除：INDEX.md/HISTORY.md（索引与档案文件）、templates/（模板本身）、projects/<项目>/spec.md（workbench 项目规格，另立规矩）。
 
 ```yaml
 ---
@@ -112,7 +111,7 @@ reference/design/change 是项目文档（workbench 产物），是卡片的素�
 
 ## 知识互联
 
-卡片之间用 `[[slug]]` 双链互联（slug = 文件名去 .md，如 `[[workbench-spec]]`）：
+卡片之间用 `[[slug]]` 双链互联（slug = 文件名去 .md，如 `[[module-slug]]`）：
 - **链接只指向文档，不做内容级（锚点/章节）链接**
 - 撞名消歧：`[[项目/slug]]`（如 `[[项目A/模块B]]`）
 - 可带说明：`[[slug]] — 引用说明`（相关段格式）
