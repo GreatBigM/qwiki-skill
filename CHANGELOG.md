@@ -2,6 +2,11 @@
 
 本文件记录版本历史。版本号定义在 SKILL.md frontmatter 的 `version` 字段（单一真相源）。
 
+## 1.9.4 (2026-08-03)
+
+### Changed
+- **`references/hermes-hooks.md` 更名 `references/agent-hook.md`**：内容本就是三工具通用注册表（Hermes config.yaml / Claude settings.json / Codex hooks.json），原文件名有误导。SKILL.md / README.md 引用同步更新，CHANGELOG 历史条目保持原名
+
 ## 1.9.3 (2026-08-03)
 
 ### Fixed

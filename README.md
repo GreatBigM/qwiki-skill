@@ -62,7 +62,7 @@ hermes skills install qwiki
 | git | 是 | 知识库版本管理 | 系统自带 |
 | python3 | 否 | hook 脚本（缺失时静默跳过，不阻塞主流程） | 系统自带 |
 
-零外部 skill 依赖——hook 机制说明已内嵌（references/hermes-hooks.md，含三工具注册表）。
+零外部 skill 依赖——hook 机制说明已内嵌（references/agent-hook.md，含三工具注册表）。
 
 ## 快速上手
 
@@ -87,7 +87,7 @@ qwiki-skill/
 ├── CHANGELOG.md                     ← 版本历史
 ├── SKILL.md                         ← 操作手册（九操作路由 + 详细步骤，仓库根即 skill）
 ├── templates/                       ← index / routing / schema / history / card / note 六模板
-├── references/                      ← hermes-hooks（hook 机制 + 三工具注册表）
+├── references/                      ← agent-hook（hook 机制 + 三工具注册表）
 └── scripts/                         ← knowledge-sediment-lib.sh（归一化层）+ 四 hook 脚本
 ```
 
