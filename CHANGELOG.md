@@ -2,6 +2,11 @@
 
 本文件记录版本历史。版本号定义在 SKILL.md frontmatter 的 `version` 字段（单一真相源）。
 
+## 1.9.5 (2026-08-03)
+
+### Removed
+- **`templates/routing.md` 移除**：检索链职责已由 hook 承担（inject.sh 每轮注入 / Codex hint.sh Stop 门禁），ROUTING.md 无读者，SOUL/CLAUDE 不再声明检索链（方案 A 定稿）。init 不再生成 ROUTING.md，宪法 `templates/schema.md` 目录结构同步移除，知识库实例 `~/qwiki/ROUTING.md` 一并删除
+
 ## 1.9.4 (2026-08-03)
 
 ### Changed

@@ -12,7 +12,6 @@
 ```
 ~/qwiki/                          ← AI 知识库（git 管理，跨工具共享）
 ├── INDEX.md                     ← 全局知识目录，一张平表（检索总入口）
-├── ROUTING.md                   ← 检索链详细说明
 ├── SCHEMA.md                    ← 本文（宪法：目录结构+命名+纯度+卡片公约）
 ├── HISTORY.md                   ← 变更记录
 ├── personal/                    ← 个人笔记（qwiki note，随笔卡）
@@ -59,7 +58,7 @@
 
 ## YAML 头公约（v1）
 
-所有知识库文档（`projects/**/` 与 `personal/` 下的 .md）统一 YAML 头。排除：INDEX.md/ROUTING.md/SCHEMA.md/HISTORY.md（索引与宪法文件）、templates/（模板本身）、projects/<项目>/spec.md（workbench 项目规格，另立规矩）。
+所有知识库文档（`projects/**/` 与 `personal/` 下的 .md）统一 YAML 头。排除：INDEX.md/SCHEMA.md/HISTORY.md（索引与宪法文件）、templates/（模板本身）、projects/<项目>/spec.md（workbench 项目规格，另立规矩）。
 
 ```yaml
 ---
@@ -127,5 +126,3 @@ reference/design/change 是项目文档（workbench 产物），是卡片的素�
 
 - **L2→L1**：只能升到 memory，**永远不允许写入 SOUL.md**
 - **HISTORY.md 只进不出**：HISTORY 档案内容不删，只追加；过时内容加 `deprecated` 标记而非删除（注意：此规则仅限 HISTORY.md，卡片按§卡片身份的活知识原则可修正/销毁）
-
-> @see [[ROUTING.md]]
