@@ -1,7 +1,7 @@
 ---
 name: qwiki
 description: Use when user says qwiki. Knowledge base management.
-version: 1.9.4
+version: 1.9.5
 author: Hermes Agent
 license: MIT
 category: knowledge
@@ -59,17 +59,16 @@ AI:  执行操作 → 回报结果
 
 0. **幂等检查**：`[ -d ~/qwiki ]`
    - 不存在 → 继续
-   - 已存在 → 提示"qwiki 知识库已存在（~/qwiki/）"，询问"是否重新初始化？（将覆盖 INDEX.md 和 ROUTING.md，知识文件保留）"
+   - 已存在 → 提示"qwiki 知识库已存在（~/qwiki/）"，询问"是否重新初始化？（将覆盖 INDEX.md，知识文件保留）"
    - 用户拒绝 → 退出
-   - 用户同意 → 备份旧 INDEX.md/ROUTING.md 为 .bak，继续
+   - 用户同意 → 备份旧 INDEX.md 为 .bak，继续
 1. `mkdir -p ~/qwiki/personal ~/qwiki/projects/common`
 2. `cd ~/qwiki && git init`
 3. 创建 INDEX.md（按 `templates/index.md` 模板生成：空表 + personal 分区 + 维护规则脚注）
-4. 创建 ROUTING.md（按 `templates/routing.md` 模板生成：检索链 + 降级路径 + 自生长规则 + 腐化检测 + 模板指引）
-5. 创建 SCHEMA.md（按 `templates/schema.md` 模板生成：宪法——目录结构/命名/纯度/卡片公约）
-6. 创建 HISTORY.md（按 `templates/history.md` 模板生成：大事记档案——方法论定稿/架构决策/实践结论，事件粒度）
-7. `cd ~/qwiki && git add -A && git commit -m "init qwiki"`
-8. **hook 注册检测**（自发生长事件驱动层，跨工具通用）：
+4. 创建 SCHEMA.md（按 `templates/schema.md` 模板生成：宪法——目录结构/命名/纯度/卡片公约）
+5. 创建 HISTORY.md（按 `templates/history.md` 模板生成：大事记档案——方法论定稿/架构决策/实践结论，事件粒度）
+6. `cd ~/qwiki && git add -A && git commit -m "init qwiki"`
+7. **hook 注册检测**（自发生长事件驱动层，跨工具通用）：
    - 检测当前工具（Hermes `~/.hermes/config.yaml` / Claude `~/.claude/settings.json` / Codex `~/.codex/hooks.json`）
    - 检查该工具 hooks 是否已注册 knowledge-sediment 脚本（session_end/post_tool/pre_llm/subagent）
    - 缺失 → 提示"知识自动沉淀依赖 hook 事件驱动（每轮检索引导 + 代码修改即时感知 + 会话结束补沉淀）。是否注册？"→ Y → 按 `references/agent-hook.md` 的注册表配置 + 复制 `scripts/knowledge-sediment-*.sh` 到工具 scripts 目录
@@ -246,7 +245,7 @@ INDEX 条目数、已入驻项目、知识文件数。
 
 本 skill 依赖以下模板与参考文件（安装时随 SKILL.md 一并打包，请勿删除）：
 
-- init 模板（建库）：`templates/index.md`、`templates/routing.md`、`templates/schema.md`、`templates/history.md`
+- init 模板（建库）：`templates/index.md`、`templates/schema.md`、`templates/history.md`
 - 卡片模板（生成卡）：`templates/card.md`、`templates/note.md`
 - hook 脚本（自发生长事件驱动，三工具兼容）：`scripts/knowledge-sediment-lib.sh`（归一化层）+ `scripts/knowledge-sediment-hint.sh`、`scripts/knowledge-sediment-toolcheck.sh`、`scripts/knowledge-sediment-inject.sh`、`scripts/knowledge-sediment-subagent.sh`
 - 参考：`references/agent-hook.md`（hook 机制说明 + 三工具注册表）

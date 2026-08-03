@@ -86,7 +86,7 @@ qwiki-skill/
 ├── install.sh                       ← 一键安装脚本（多 agent 目标）
 ├── CHANGELOG.md                     ← 版本历史
 ├── SKILL.md                         ← 操作手册（九操作路由 + 详细步骤，仓库根即 skill）
-├── templates/                       ← index / routing / schema / history / card / note 六模板
+├── templates/                       ← index / schema / history / card / note 五模板
 ├── references/                      ← agent-hook（hook 机制 + 三工具注册表）
 └── scripts/                         ← knowledge-sediment-lib.sh（归一化层）+ 四 hook 脚本
 ```
