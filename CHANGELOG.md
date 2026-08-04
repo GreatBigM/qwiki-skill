@@ -2,6 +2,21 @@
 
 本文件记录版本历史。版本号定义在 SKILL.md frontmatter 的 `version` 字段（单一真相源）。
 
+## 2.1.0 (2026-08-04)
+
+### Changed（migrate 语义收敛 + sync 结构审视，2026-08-04 讨论定稿）
+
+- **migrate 重定位为「知识入迁」**：统一判据 = 来源知识是否已是当前 v4 卡片体系？不是 → migrate。旧 wiki 遗产、本库 v2 遗产（references/design/archive）、其他工具沉淀、笔记导出——场景统一，动作一致（盘点 → 蒸馏建卡 → INDEX 回填）。本库版本升级 = 把旧版本知识库当「别的知识库」迁入，非库内原地变形
+- **migrate 参数放开**：`migrate <项目>` → `migrate <来源> [目标]`（来源 = 旧库路径/项目名/笔记目录，目标可选）；新增归属路由步骤（personal / common / 项目）
+- **migrate 边界声明**：只做「迁入当前版本」，v4 体系内结构调整（归属调整、上浮 common）不归 migrate
+- **sync 新增第 3 步「结构审视」（主动防腐化）**：归属调整（放错库/层级的卡归位：personal ↔ projects、项目 ↔ common）——发现即处理，与检测驱动防腐化互补。步骤顺延（git commit 变第 4 步）
+- import 完成提示措辞「做老知识迁移」→「做知识入迁」
+- 版本 2.0.0 → 2.1.0
+
+### Removed
+
+- **note→card「按需演进」概念废除（2026-08-04 定稿）**：note（personal/）与 card（projects/）是两个库，归属由来源决定，不存在形态演进——随笔卡不会「成熟为模块卡」。跨库移动仅发生在归属错误时（归位，归 sync 结构审视）。SCHEMA 卡片身份节 / note 模板 / SKILL.md note 节同步修正（历史版本条目保留原名）
+
 ## 2.0.0 (2026-08-03)
 
 ### Changed（SCHEMA 单一真相源收敛，库内不放置实例）
