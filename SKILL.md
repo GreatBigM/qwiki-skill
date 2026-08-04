@@ -1,7 +1,7 @@
 ---
 name: qwiki
 description: Use when user says qwiki. Knowledge base management.
-version: 2.0.0
+version: 2.1.0
 author: Hermes Agent
 license: MIT
 category: knowledge
@@ -42,14 +42,14 @@ AI:  执行操作 → 回报结果
 | qwiki init | init | 无 |
 | qwiki deinit | deinit | 无 |
 | qwiki import <项目> | import | 项目名 |
-| qwiki migrate <项目> | migrate | 项目名 |
+| qwiki migrate <来源> [目标] | migrate | 来源（旧库路径/项目名/笔记目录），目标可选 |
 | qwiki delete <项目> | delete | 项目名 |
 | qwiki sync [项目] | sync | 可选，缺省全部 |
 | qwiki explore [关键词] | explore | 可选 |
 | qwiki note <标题> | note | 笔记标题 |
 | qwiki status | status | 无 |
 
-> 知识生成（蒸馏建卡）是日常任务的自发行为，无命令触发——干活读透模块顺手沉淀。migrate 仅用于存量知识批量整理（历史 references 升级为卡片），非生产动作。
+> 知识生成（蒸馏建卡）是日常任务的自发行为，无命令触发——干活读透模块顺手沉淀。migrate 仅用于非当前版本知识的批量入迁（旧库/遗产/笔记导入），非生产动作。
 
 ---
 
@@ -126,25 +126,28 @@ AI:  执行操作 → 回报结果
 3. **项目卡初版**：工程划分用多信号源交叉，编译相关章节标注"静态推导，待验证"
 4. `mkdir -p ~/qwiki/projects/<项目名>/`
 5. INDEX 追加项目区块
-6. 提示"项目 <项目名> 入驻完成：项目卡初版（含待验证清单）。若存在历史知识（references/design 等），执行 qwiki migrate <项目名> 做老知识迁移。"
+6. 提示"项目 <项目名> 入驻完成：项目卡初版（含待验证清单）。若存在历史知识（references/design 等），执行 qwiki migrate <项目名> 做知识入迁。"
 
 ---
 
-## migrate — 主动迁移（老知识升级）
+## migrate — 知识入迁（非当前版本 → 当前 v4 卡片体系）
 
-import 之后接力执行：检测项目历史知识（references/design/archive 等 v2 遗产），迁移整理为 v4 卡片体系。
+**统一判据**：来源知识是否已是当前 v4 卡片体系？不是 → migrate。旧 wiki 遗产、本库 v2 遗产（references/design/archive）、其他工具沉淀、笔记导出——区别只在继承关系远近，动作一致：盘点 → 蒸馏建卡 → INDEX 回填。本库版本升级 = 把旧版本知识库当「别的知识库」迁入，而非库内原地变形。
 
-1. **老知识盘点**：`ls ~/qwiki/projects/<项目>/references|design|archive/` + INDEX 现有登记，确认遗产规模
-2. **核心模块识别**：高频调试/知识最丰富者优先，一次 1-3 个模块
-3. **蒸馏建卡**（`templates/card.md` 八段模板）：
+1. **来源盘点**：确认来源形态与规模（旧库目录 / 项目 references|design|archive / 笔记目录 / 导出文件），对照 INDEX 现有登记防重复
+2. **核心知识识别**：高频/知识最丰富者优先，一次 1-3 个模块
+3. **蒸馏建卡**（`templates/card.md` 八段模板 / `templates/note.md`）：
    - 模块边界：search_files 确认文件清单
-   - 素材：memory + 已有 references + 代码验证
-   - 卡片是「导航 + 核心事实」，细节指向 references（相关卡片段），不搬运全文
-4. **INDEX 回填**：新卡登记 + 核心 references 补登记（旧日志/单次分析类按自然淘汰）
-5. `cd ~/qwiki && git commit -m "migrate <项目>: <N> 张卡 + INDEX 回填"`
-6. 提示"项目 <项目名> 迁移完成：N 张卡，INDEX 回填 M 条。"
+   - 素材：memory + 来源文档 + 代码验证
+   - 卡片是「导航 + 核心事实」，细节指向来源/现有 references（相关卡片段），不搬运全文
+4. **归属路由**：个人知识 → `~/qwiki/personal/`，跨项目 → `~/qwiki/projects/common/`，项目 → `~/qwiki/projects/<项目>/`
+5. **INDEX 回填**：新卡登记 + 核心 references 补登记（旧日志/单次分析类按自然淘汰）
+6. `cd ~/qwiki && git commit -m "migrate <来源>: <N> 张卡 + INDEX 回填"`
+7. 提示"迁移完成：N 张卡，INDEX 回填 M 条。"
 
-无老知识时：提示"未检测到历史知识，无需迁移。"
+无可迁对象时：提示"来源已是当前 v4 卡片体系（或无可迁知识），无需迁移。"
+
+> **边界**：migrate 只做「迁入当前版本」。v4 体系内的结构调整（归属调整、上浮 common）归 sync 结构审视，不归 migrate。
 
 ---
 
@@ -156,7 +159,7 @@ import 之后接力执行：检测项目历史知识（references/design/archive
 
 ---
 
-## sync — 日常同步
+## sync — 日常同步（一致性校验 + 防腐化 + 结构审视）
 
 1. 一致性校验（报告修复）：
    - INDEX 死链/漏登记（登记行指向的文件是否存在）
@@ -166,7 +169,10 @@ import 之后接力执行：检测项目历史知识（references/design/archive
    - 与代码/实测矛盾的卡 → 修正内容
    - 完全不符合现实的卡 → 提出销毁建议（确认后删）
    - 孤岛（零入链）→ 标记冷门保留，不销毁
-3. `cd ~/qwiki && git add -A && git commit -m "sync $(date +%Y%m%d)"`（有变更时）
+3. **结构审视（主动防腐化，2026-08-04 定稿）**：
+   - 归属调整：放错库/放错层级的卡归位（personal ↔ projects、项目 ↔ common）——跨库移动只在归属错误时发生，非形态演进（note/card 是两个库，无演进）
+   - 发现即处理，与检测驱动防腐化互补
+4. `cd ~/qwiki && git add -A && git commit -m "sync $(date +%Y%m%d)"`（有变更时）
 
 ---
 
@@ -201,7 +207,7 @@ import 之后接力执行：检测项目历史知识（references/design/archive
 - YAML 头按公约：title/type/date 必填 + summary 真相源 + tags
 - 相关段用 `[[slug]]` 双链（文档级链接，见 skill 根目录 `SCHEMA.md` §知识互联）
 - 正文段落为参考骨架（背景/要点/结论），按需取舍，**不强制 schema**——写什么算什么，后续可随时补充
-- 卡片身份：note 是随笔卡（个人来源），与 card 模块卡（项目来源）同一身份；按需演进为模块卡（结构扩展，公约与链接不变）
+- 卡片身份：note 是随笔卡（personal/ 库，个人来源），card 是模块卡（projects/ 库，项目来源）——两个库、归属由来源决定，**无形态演进**；跨库归位（归属错误时）由 sync 结构审视处理
 - 和 import 的区别：note 无项目目录，一条 INDEX 行 + 一个 .md
 - 写完后 `cd ~/qwiki && git add -A && git commit -m "note: <标题>"`
 
@@ -217,7 +223,7 @@ INDEX 条目数、已入驻项目、知识文件数。
 
 模块边界 / 职责描述 / 架构设计 / 技术栈 / 代码规范 / 配置命令 / 模块间关系 / 相关
 
-> 卡片公共约定（见 skill 根目录 `SCHEMA.md` §卡片身份）：YAML 头（title/type/date 必填 + summary 真相源）+ 一句话总结 + `[[slug]]` 双链 + 相关段。card=模块卡（八段），note=随笔卡（自由正文），同一身份不同形态。
+> 卡片公共约定（见 skill 根目录 `SCHEMA.md` §卡片身份）：YAML 头（title/type/date 必填 + summary 真相源）+ 一句话总结 + `[[slug]]` 双链 + 相关段。card=模块卡（projects/ 库，八段），note=随笔卡（personal/ 库，自由正文）——两个库，归属由来源决定，无形态演进。
 
 ## 架构文档
 
