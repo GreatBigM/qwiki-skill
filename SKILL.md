@@ -1,6 +1,6 @@
 ---
 name: qwiki
-description: Use when user says qwiki. Knowledge base management.
+description: 个人知识库管理：卡片索引、知识沉淀、自动检索，AI 替你积累项目经验。
 version: 2.1.0
 author: Hermes Agent
 license: MIT
