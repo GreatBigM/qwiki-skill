@@ -1,10 +1,11 @@
 #!/bin/bash
 # pre_llm_call / UserPromptSubmit hook：检索引导 + 沉淀指令注入
-# 兼容 Hermes / Claude Code / Codex（payload 经归一化层统一）
+# 兼容 Hermes / Claude Code / Codex / ZCode（payload 经归一化层统一）
 #
-# 输出协议：{"context": "..."} → 注入 LLM 上下文
-# 注意：Codex UserPromptSubmit 不处理 hook 输出（静默忽略），
-#       Codex 的沉淀注入由 hint.sh Stop 门禁承担
+# 输出协议（按工具分支，由 sediment_detect_tool 判定）：
+#   Hermes:  {"context": "..."} → 注入 LLM 上下文
+#   Claude Code / ZCode: {"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": "..."}}
+#   Codex:  UserPromptSubmit 不处理 hook 输出（静默忽略），沉淀注入由 hint.sh Stop 门禁承担
 #
 # 职责：
 #   1. 无条件：注入"先查知识库"检索引导
@@ -21,15 +22,16 @@ payload=$(cat)
 export HOOK_PAYLOAD="$payload"
 
 sediment_normalize_payload
+sediment_detect_tool "$@"
 
 # 仅处理 LLM 调用前事件
 sediment_is "pre_llm" || exit 0
 
-# ---- 输出构造 ----
-python3 - "$SEDIMENT_QUEUE_DIR" "$SEDIMENT_PROMPT" <<'PYEOF'
+# ---- 输出构造（按工具协议分支）----
+python3 - "$SEDIMENT_QUEUE_DIR" "$SEDIMENT_PROMPT" "$SEDIMENT_AGENT" <<'PYEOF'
 import json, os, sys
 
-qdir, prompt = sys.argv[1], sys.argv[2]
+qdir, prompt, agent = sys.argv[1], sys.argv[2], sys.argv[3]
 
 # 检索引导（固定注入，每轮生效）——检索链单一真相源在此
 guide = "【知识库检索】涉及项目/技术/历史问题先查 ~/qwiki：INDEX.md（全局目录）→ 知识文件（projects/<项目>/ 或 personal/）→ 相关卡；查不到再凭经验或 web。沉淀规则：验证结论/代码修改/子代理产出自动写卡（≤5 页/会话）。"
@@ -67,7 +69,21 @@ ctx = guide
 if instr:
     ctx += "\n" + instr
 
-print(json.dumps({"context": ctx}, ensure_ascii=False))
+# 输出协议分支：
+#   hermes → {"context": "..."}（Hermes pre_llm_call）
+#   claude/zcode → {"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": "..."}}（Claude Code / ZCode 同协议）
+#   codex/unknown → 静默（Codex 不处理该事件输出；unknown 保守不输出）
+if agent == "hermes":
+    print(json.dumps({"context": ctx}, ensure_ascii=False))
+elif agent in ("claude", "zcode"):
+    print(json.dumps({
+        "hookSpecificOutput": {
+            "hookEventName": "UserPromptSubmit",
+            "additionalContext": ctx,
+        }
+    }, ensure_ascii=False))
+else:
+    pass  # codex / unknown：不输出
 PYEOF
 
 exit 0

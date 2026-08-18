@@ -1,8 +1,9 @@
 #!/bin/bash
-# knowledge-sediment-lib.sh — 三工具 hook payload 统一归一化层（Hermes/Claude Code/Codex）
+# knowledge-sediment-lib.sh — 多工具 hook payload 统一归一化层（Hermes/Claude Code/Codex/ZCode）
 # 被 knowledge-sediment-{hint,toolcheck,inject,subagent}.sh source
-# 职责：读 stdin JSON → 归一化为统一事件类型 + 提取公共字段
-# 用法：`source knowledge-sediment-lib.sh` 后调用 `sediment_normalize_payload`
+# 职责：读 stdin JSON → 归一化为统一事件类型 + 提取公共字段 + 识别当前工具
+# 用法：`source knowledge-sediment-lib.sh` 后调用 `sediment_normalize_payload`、`sediment_detect_tool`
+# 工具判定：优先注册参数 $1（各工具注册命令自带工具名），否则从 payload 特征推断
 #
 # 归一化结果（全局变量，函数内 export 或显式读取）：
 #   SEDIMENT_EVENT    : 统一事件类型 session_end | code_change | verify_done | subagent_done | other
@@ -51,7 +52,7 @@ EVENT_MAP = {
     "on_session_start": "session_start",
     "on_session_finalize": "session_finalize",
     "on_session_reset": "session_reset",
-    # Claude Code (PascalCase)
+    # Claude Code / ZCode (PascalCase，两者事件同名，同一套归一化)
     "PostToolUse": "post_tool",
     "UserPromptSubmit": "pre_llm",
     "SessionEnd": "session_end",
@@ -107,7 +108,7 @@ if isinstance(res, dict) and (res.get("error") or res.get("is_error")):
     status = "error"
 
 session = data.get("session_id") or data.get("session") or ""
-prompt = data.get("prompt") or data.get("user_message") or data.get("query") or ""
+prompt = data.get("prompt") or data.get("user_prompt") or data.get("user_message") or data.get("query") or ""
 cwd = data.get("cwd") or data.get("working_directory") or ""
 
 # ---- 细节文本（子代理 / 工具结果）----
@@ -137,3 +138,37 @@ PYEOF
 
 # 便捷判断：是否属于某事件类型
 sediment_is() { [ "$SEDIMENT_EVENT" = "$1" ]; }
+
+# ─── 工具判定（输出格式路由依据）────────────────────────────────────
+# 同一套脚本注册到四个工具，输出协议不同（Hermes: {"context"}；Claude/ZCode: {"hookSpecificOutput"}；
+# Codex: 不处理注入输出）。注册命令带工具名参数（见 references/agent-hook.md 注册表），
+# 未带参数时从 payload 特征兜底推断。
+sediment_detect_tool() {
+    # 优先注册参数（agent-hook.md 注册表各工具命令第 1 参为工具名）
+    if [ "$#" -gt 0 ] && [ -n "$1" ]; then
+        SEDIMENT_AGENT="$1"
+        return 0
+    fi
+    # payload 特征兜底：hook_event_name + 字段差异
+    local evt_agent=""
+    evt_agent=$(echo "${HOOK_PAYLOAD:-}" | python3 -c "
+import json, sys
+try:
+    d = json.load(sys.stdin)
+except Exception:
+    d = {}
+e = d.get('hook_event_name', '')
+if e in ('pre_llm_call', 'post_tool_call', 'on_session_end', 'subagent_stop'):
+    print('hermes')
+elif 'user_prompt' in d:
+    print('claude')
+elif e in ('user_prompt_submit', 'pre_tool_use', 'post_tool_use'):
+    print('codex')
+else:
+    print('unknown')
+" 2>/dev/null)
+    SEDIMENT_AGENT="${evt_agent:-unknown}"
+}
+
+# 便捷判断：当前工具是否为 Claude 系（Claude Code / ZCode，输出走 hookSpecificOutput 协议）
+sediment_is_claude_like() { [ "$SEDIMENT_AGENT" = "claude" ] || [ "$SEDIMENT_AGENT" = "zcode" ]; }

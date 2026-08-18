@@ -1,6 +1,7 @@
 #!/bin/bash
 # subagent_stop hook：子代理产出知识信号（团队协作场景沉淀）
 # 兼容 Hermes / Claude Code / Codex（payload 经归一化层统一）
+# 注意：ZCode 不支持 SubagentStop 事件，本脚本不注册到 ZCode（子代理产出信号由主会话会话结束门禁兜底）
 # 注意：payload 经环境变量传给 python（heredoc 会覆盖 stdin）
 
 SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

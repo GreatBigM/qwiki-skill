@@ -1,10 +1,10 @@
 #!/bin/bash
 # Stop / on_session_end hook：会话结束 → 沉淀门禁
-# 兼容 Hermes / Claude Code / Codex（payload 经归一化层统一）
+# 兼容 Hermes / Claude Code / Codex / ZCode（payload 经归一化层统一）
 #
-# Codex 特殊行为（Stop 事件）：
+# Codex / ZCode 特殊行为（Stop 事件，同一协议）：
 #   有标记且 stop_hook_active=false → {"decision":"block","reason":"沉淀指令"}
-#   强制 AI 在结束前执行沉淀（连续 block 8 次后 CLI 自动放行）
+#   强制 AI 在结束前执行沉淀（Codex 连续 block 8 次后 CLI 自动放行；ZCode 内建最多 3 次续跑）
 # Hermes/Claude（session_end 事件）：
 #   写 session_end 标记到队列（下次 inject 消费）
 
@@ -19,8 +19,9 @@ payload=$(cat)
 export HOOK_PAYLOAD="$payload"
 
 sediment_normalize_payload
+sediment_detect_tool "$@"
 
-# 仅处理会话结束事件（Hermes on_session_end / Codex Stop）
+# 仅处理会话结束事件（Hermes on_session_end / Codex Stop / Claude-ZCode SessionEnd 由 Stop 承担）
 sediment_is "session_end" || exit 0
 
 mkdir -p "$SEDIMENT_QUEUE_DIR"

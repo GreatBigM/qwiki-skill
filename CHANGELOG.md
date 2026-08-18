@@ -2,6 +2,17 @@
 
 本文件记录版本历史。版本号定义在 SKILL.md frontmatter 的 `version` 字段（单一真相源）。
 
+## 2.3.0 (2026-08-18)
+
+### Changed（ZCode hook 事件驱动层适配）
+
+- **四工具归一化**：`knowledge-sediment-lib.sh` 增加 `sediment_detect_tool`（注册参数 `$1` 优先，payload 特征兜底），工具判定与输出协议解耦
+- **inject.sh 输出协议分支**：Hermes 走 `{"context"}`，Claude Code / ZCode 走 `{"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext"}}`（ZCode 与 Claude 同协议），Codex 静默不输出
+- **toolcheck.sh 兼容 Claude/ZCode 工具名**：代码修改检测加 `Write/Edit/ApplyPatch/NotebookEdit`，验证检测加 `Bash`；文件路径/命令字段优先读 `tool_input`（ZCode/Claude payload 格式）
+- **hint.sh**：ZCode Stop 门禁与 Codex 同协议（`{"decision":"block","reason"}`），兼容无需改动输出，仅加工具判定；ZCode 内建最多 3 次续跑
+- **注册表**：`references/agent-hook.md` 增加 ZCode 段（`~/.zcode/cli/config.json` 顶层 `hooks` 键，`enabled: true` 启用，注册三项：UserPromptSubmit/PostToolUse/Stop，无 SubagentStop）；SKILL.md init 步骤 6 / note 段 / 跨工具说明同步
+- 版本 2.2.0 → 2.3.0
+
 ## 2.2.0 (2026-08-18)
 
 ### Added

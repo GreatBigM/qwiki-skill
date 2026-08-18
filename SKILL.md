@@ -1,7 +1,7 @@
 ---
 name: qwiki
 description: 个人知识库管理：卡片索引、知识沉淀、自动检索，AI 替你积累项目经验。
-version: 2.2.0
+version: 2.3.0
 author: GreatBigM
 license: MIT
 category: knowledge
@@ -68,11 +68,11 @@ AI:  执行操作 → 回报结果
 4. 创建 HISTORY.md（按 `templates/history.md` 模板生成：大事记档案——方法论定稿/架构决策/实践结论，事件粒度）
 5. `cd ~/qwiki && git add -A && git commit -m "init qwiki"`
 6. **hook 注册检测**（自发生长事件驱动层，跨工具通用）：
-   - 检测当前工具（Hermes `~/.hermes/config.yaml` / Claude `~/.claude/settings.json` / Codex `~/.codex/hooks.json`）
-   - 检查该工具 hooks 是否已注册 knowledge-sediment 脚本（session_end/post_tool/pre_llm/subagent）
+   - 检测当前工具（Hermes `~/.hermes/config.yaml` / Claude `~/.claude/settings.json` / Codex `~/.codex/hooks.json` / ZCode `~/.zcode/cli/config.json`）
+   - 检查该工具 hooks 是否已注册 knowledge-sediment 脚本（session_end/stop + post_tool + pre_llm；ZCode 无 subagent 事件，注册三项即可）
    - 缺失 → 提示"知识自动沉淀依赖 hook 事件驱动（每轮检索引导 + 代码修改即时感知 + 会话结束补沉淀）。是否注册？"→ Y → 按 `references/agent-hook.md` 的注册表配置 + 复制 `scripts/knowledge-sediment-*.sh` 到工具 scripts 目录
 
-> **跨工具说明**：知识库本体（~/qwiki/）与工具无关，任何 agent（Hermes / Claude Code / Codex）都能读写。hook 事件驱动层三工具同构（事件名归一化由 `scripts/knowledge-sediment-lib.sh` 承担），检索引导由 inject.sh 每轮注入（Hermes/Claude）或 hint.sh Stop 门禁注入（Codex）——SOUL.md 无需声明检索链（方案 A 定稿，2026-08-02）。
+> **跨工具说明**：知识库本体（~/qwiki/）与工具无关，任何 agent（Hermes / Claude Code / Codex / ZCode）都能读写。hook 事件驱动层多工具同构（事件名归一化由 `scripts/knowledge-sediment-lib.sh` 承担，输出协议由 `sediment_detect_tool` 按工具分支），检索引导由 inject.sh 每轮注入（Hermes 走 context，Claude/ZCode 走 hookSpecificOutput.additionalContext）或 hint.sh Stop 门禁注入（Codex/ZCode）——SOUL.md 无需声明检索链（方案 A 定稿，2026-08-02）。
 
 ---
 
@@ -198,7 +198,7 @@ AI:  执行操作 → 回报结果
 
 - **自动判断模式（自发生长）**：三触发源出现时 AI 直接建卡/更新，不等用户命令——
   ① 验证结论产生（实测/分析出结论）② 重复实践未命中知识点（查 INDEX 无对应卡且实践再现）③ 代码修改后对应卡需更新
-- **hook 事件驱动层**（善用 hook，任务嵌入事件点，跨工具通用）：`scripts/knowledge-sediment-*.sh` 注册到当前工具 hooks（Hermes config.yaml / Claude settings.json / Codex hooks.json）——session_end 写标记 / post_tool 信号检测 / pre_llm 每轮注入检索引导+读队列沉淀指令（Codex 由 Stop 门禁承担） / subagent_stop 子代理产出——标记写入队列目录（XDG 约定 `${XDG_STATE_HOME:-~/.local/state}/qwiki/sediment/`，定义于 lib.sh），inject 读后即删（Codex 由 hint.sh Stop 门禁读后即删）。三工具 payload 经 `scripts/knowledge-sediment-lib.sh` 归一化（一个脚本吃三种），机制说明见 `references/agent-hook.md`
+- **hook 事件驱动层**（善用 hook，任务嵌入事件点，跨工具通用）：`scripts/knowledge-sediment-*.sh` 注册到当前工具 hooks（Hermes config.yaml / Claude settings.json / Codex hooks.json / ZCode `~/.zcode/cli/config.json`，见 `references/agent-hook.md` 注册表）——session_end/stop 写标记 / post_tool 信号检测 / pre_llm 每轮注入检索引导+读队列沉淀指令（Codex/ZCode 由 Stop 门禁承担） / subagent_stop 子代理产出（ZCode 无此事件，不注册）——标记写入队列目录（XDG 约定 `${XDG_STATE_HOME:-~/.local/state}/qwiki/sediment/`，定义于 lib.sh），inject 读后即删（Codex/ZCode 由 hint.sh Stop 门禁读后即删）。多工具 payload 经 `scripts/knowledge-sediment-lib.sh` 归一化（一个脚本吃四种：Hermes/Claude/Codex/ZCode），输出协议按工具分支，机制说明见 `references/agent-hook.md`
 - **知识归属路由**（决定卡放哪）：
   - 个人方法论/工作哲学 → `~/qwiki/personal/`
   - 跨项目知识（反模式/通用经验/工具坑，来源项目、适用多项目）→ `~/qwiki/projects/common/`
@@ -250,6 +250,6 @@ INDEX 条目数、已入驻项目、知识文件数。
 - 宪法（与 SKILL.md 平级，唯一真相源）：`SCHEMA.md`（随安装拷贝）
 - init 模板（建库）：`templates/index.md`、`templates/history.md`
 - 卡片模板（生成卡）：`templates/card.md`、`templates/note.md`
-- hook 脚本（自发生长事件驱动，三工具兼容）：`scripts/knowledge-sediment-lib.sh`（归一化层）+ `scripts/knowledge-sediment-hint.sh`、`scripts/knowledge-sediment-toolcheck.sh`、`scripts/knowledge-sediment-inject.sh`、`scripts/knowledge-sediment-subagent.sh`
+- hook 脚本（自发生长事件驱动，四工具兼容）：`scripts/knowledge-sediment-lib.sh`（归一化层）+ `scripts/knowledge-sediment-hint.sh`、`scripts/knowledge-sediment-toolcheck.sh`、`scripts/knowledge-sediment-inject.sh`、`scripts/knowledge-sediment-subagent.sh`（ZCode 无 SubagentStop，不注册该项）
 - 参考：`references/agent-hook.md`（hook 机制说明 + 三工具注册表）
 - 版本记录：`CHANGELOG.md`（随安装拷贝，记录版本历史）
