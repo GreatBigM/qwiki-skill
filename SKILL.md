@@ -2,11 +2,11 @@
 name: qwiki
 description: 个人知识库管理：卡片索引、知识沉淀、自动检索，AI 替你积累项目经验。
 version: 2.1.1
-author: Hermes Agent
+author: GreatBigM
 license: MIT
 category: knowledge
 metadata:
-  hermes:
+  agent:
     tags: [knowledge-base, wiki, projects]
     triggers: [qwiki, 知识库, 知识管理, wiki, 知识检索, 知识同步, 项目入驻, 知识卡片]
     related_skills: []
