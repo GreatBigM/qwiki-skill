@@ -1,6 +1,6 @@
 #!/bin/bash
 # post_tool_call hook：代码修改/验证成功信号检测 → 写沉淀标记
-# 兼容 Hermes / Claude Code / Codex（payload 经归一化层统一）
+# 兼容 Hermes / Claude Code / Codex / ZCode（payload 经归一化层统一）
 
 SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=knowledge-sediment-lib.sh
@@ -13,21 +13,23 @@ payload=$(cat)
 export HOOK_PAYLOAD="$payload"
 
 sediment_normalize_payload
+sediment_detect_tool "$@"
 
 # 仅处理工具调用后事件
 sediment_is "post_tool" || exit 0
 
 # 代码修改检测：write_file / patch / edit / apply_patch 等
 case "$SEDIMENT_TOOL" in
-  write_file|write|patch|edit|apply_patch|edit_file|replace|multi_edit)
-    # 文件路径从 detail 或 payload 提取（归一化层未单独提，此处从原始 payload 提取）
+  # Claude/ZCode 系工具名（Write/Edit/ApplyPatch/NotebookEdit），与 Hermes/Codex 小写名并存
+  write_file|write|patch|edit|apply_patch|edit_file|replace|multi_edit|Write|Edit|ApplyPatch|NotebookEdit)
+    # 文件路径从 payload 提取（归一化层未单独提，此处从原始 payload 提取；兼容各工具字段）
     fpath=$(echo "$payload" | python3 -c "
 import json,sys
 try:
     d=json.load(sys.stdin)
     a=d.get('args',{}) or {}
     t=d.get('tool_input',{}) or {}
-    p=a.get('path') or t.get('path') or t.get('file_path') or a.get('file_path') or ''
+    p=a.get('path') or t.get('file_path') or t.get('path') or a.get('file_path') or ''
     print(p)
 except Exception:
     print('')
@@ -49,8 +51,8 @@ with open(os.path.join(qdir, fn), "w") as f:
 PYEOF
     fi
     ;;
-  # 验证成功检测：terminal/bash 命令 + 状态成功
-  terminal|bash|shell|exec|command)
+  # 验证成功检测：terminal/bash 命令 + 状态成功（ZCode/Claude 系工具名为 Bash）
+  terminal|bash|shell|exec|command|Bash)
     # 归一化层已算 status；仅成功命令才算验证（失败构建不写标记）
     [ "$SEDIMENT_STATUS" = "success" ] || exit 0
     cmd=$(echo "$payload" | python3 -c "
