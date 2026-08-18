@@ -2,6 +2,13 @@
 
 本文件记录版本历史。版本号定义在 SKILL.md frontmatter 的 `version` 字段（单一真相源）。
 
+## 2.1.1 (2026-08-18)
+
+### Fixed（inject.sh 空细节尾巴，2026-08-18 实测定位）
+
+- **`scripts/knowledge-sediment-inject.sh` 裸「细节：」尾巴**：沉淀指令拼接无条件输出「细节：」前缀，details 为空（session_end 标记天然无 detail）时 join 空列表 → 注入文本以「细节：」裸结尾，误似截断。修复：details 非空才拼「细节：…」段
+- 同步：`~/.hermes/scripts/`（运行时）+ `~/.hermes/skills/qwiki/scripts/` + 本发布仓，三处一致
+
 ## 2.1.0 (2026-08-04)
 
 ### Changed（migrate 语义收敛 + sync 结构审视，2026-08-04 讨论定稿）

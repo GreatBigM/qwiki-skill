@@ -54,7 +54,8 @@ if files:
         types = [m.get("type", "?") for m in marks]
         details = [m.get("detail", "") for m in marks if m.get("detail")]
         t_sum = "/".join(sorted(set(types)))
-        instr = f"【知识沉淀待执行】检测到沉淀标记（{t_sum}）。执行：①按归属路由建卡或更新（个人→personal/，跨项目→projects/common/，项目→项目卡）②更新 INDEX ③git commit。细节：{' | '.join(d[:120] for d in details)}"
+        detail_part = (' | '.join(d[:120] for d in details)) if details else ''
+        instr = f"【知识沉淀待执行】检测到沉淀标记（{t_sum}）。执行：①按归属路由建卡或更新（个人→personal/，跨项目→projects/common/，项目→项目卡）②更新 INDEX ③git commit。" + (f"细节：{detail_part}" if detail_part else "")
         # 读后即删（确定性生命周期）
         for fn in files:
             try:
