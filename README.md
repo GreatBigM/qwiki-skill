@@ -24,7 +24,7 @@ curl -fsSL https://gitee.com/GreatBigM/qwiki-skill/raw/main/install.sh | bash -s
 
 ## 安装（备选：手动复制）
 
-> ⚠️ 注意：`hermes skills install`（tap/URL 方式）对 qwiki 会触发安全扫描拦截——扫描器将
+> ⚠️ 注意：部分 agent 的 `skills install`（tap/URL 方式）对 qwiki 会触发安全扫描拦截——扫描器将
 > 「hook 脚本」「curl | sh 安装命令」等判定为 dangerous（误报，qwiki 的 hook 仅做知识沉淀标记），
 > 且 community 来源 + dangerous 判定不可用 --force 绕过。
 > **请使用一键脚本或手动复制安装，不经过扫描。**
@@ -50,6 +50,7 @@ cp -r qwiki-skill/scripts ~/.hermes/skills/qwiki/
 # 配置 GitHub token 可避免匿名 API 限流（60 次/时 → 5000 次/时）
 export GITHUB_TOKEN=<你的 GitHub personal access token>
 
+# 以 Hermes 为例（其余 agent 的 skills install 同理，均可能触发扫描拦截）：
 hermes skills tap add GreatBigM/qwiki-skill
 hermes skills install qwiki
 # 预期结果：扫描判定 dangerous → BLOCKED（AGENTS.md 引用误报），请改用上方手动复制
