@@ -1,7 +1,7 @@
 ---
 name: qwiki
 description: 个人知识库管理：卡片索引、知识沉淀、自动检索，AI 替你积累项目经验。
-version: 2.3.0
+version: 2.4.0
 author: GreatBigM
 license: MIT
 category: knowledge
