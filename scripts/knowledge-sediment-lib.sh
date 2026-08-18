@@ -160,6 +160,10 @@ except Exception:
 e = d.get('hook_event_name', '')
 if e in ('pre_llm_call', 'post_tool_call', 'on_session_end', 'subagent_stop'):
     print('hermes')
+elif e == 'SessionEnd':
+    print('claude')
+elif e == 'Stop':
+    print('codex')
 elif 'user_prompt' in d:
     print('claude')
 elif e in ('user_prompt_submit', 'pre_tool_use', 'post_tool_use'):

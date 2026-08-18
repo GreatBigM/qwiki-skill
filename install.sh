@@ -8,7 +8,7 @@
 # 镜像: github.com/GreatBigM/qwiki-skill（海外备选）
 set -euo pipefail
 
-REPO_URL="https://gitee.com/GreatBigM/qwiki-skill.git"
+REPO_URL="${QWI_SKILL_REPO_URL:-https://gitee.com/GreatBigM/qwiki-skill.git}"
 SKILL_NAME="qwiki"
 COPY_DIRS="templates references scripts"   # 除 SKILL.md/CHANGELOG.md 外需拷贝的目录
 

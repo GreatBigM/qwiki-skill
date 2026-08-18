@@ -2,6 +2,17 @@
 
 本文件记录版本历史。版本号定义在 SKILL.md frontmatter 的 `version` 字段（单一真相源）。
 
+## 2.4.1 (2026-08-19)
+
+### Fixed（分发就绪：安装通道 + 沉淀信号收敛）
+
+- **hint.sh session_end 每轮空响**：Stop 门禁工具（Codex/ZCode）不再写 session_end 标记（Stop block 已承担会话内沉淀，遗留空标记导致下轮 inject 每轮空响「沉淀待执行」）；Hermes/Claude 仅在有实质标记时写跨会话提醒
+- **inject.sh 空标记过滤**：过滤无 detail 的 session_end 标记（空提醒不触发沉淀指令），读后即删仍清理全部标记
+- **toolcheck.sh 验证正则收紧**：去掉 `check`/`test` 宽泛词（grep 搜索含 check 被误配为验证成功），改 `\b(make|build|compile|verify|flash|burn)\b|烧录|编译` 词边界匹配
+- **lib.sh 工具判定兜底补全**：`sediment_detect_tool` fallback 补 `SessionEnd`→claude、`Stop`→codex（无注册参数时正确分流，hint.sh 门禁分支依赖该判定）
+- **install.sh REPO_URL 可覆盖**：`QWI_SKILL_REPO_URL` 环境变量支持本地仓/私有镜像源，便于分发前本地验证安装命令
+- 版本 2.4.0 → 2.4.1
+
 ## 2.4.0 (2026-08-18)
 
 ### Changed（审查修复）
