@@ -66,8 +66,8 @@ try:
 except Exception:
     print('')
 " 2>/dev/null)
-    # 验证类命令模式：build/compile/test/check/verify/烧录
-    if echo "$cmd" | grep -qiE '(build|compile|make|test|check|verify|flash|burn|烧录|编译)'; then
+    # 验证类命令模式：构建/烧录/验证动词（去掉 check/test 宽泛词防 grep 搜索误配，\b 限词边界）
+    if echo "$cmd" | grep -qiE '\b(make|build|compile|verify|flash|burn)\b|烧录|编译'; then
       mkdir -p "$SEDIMENT_QUEUE_DIR"
       python3 - "$SEDIMENT_QUEUE_DIR" "$cmd" "$SEDIMENT_STATUS" "$SEDIMENT_SESSION" <<'PYEOF'
 import json, os, sys, time

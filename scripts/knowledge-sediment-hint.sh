@@ -36,10 +36,10 @@ except Exception:
     print('false')
 " 2>/dev/null)
 
-python3 - "$SEDIMENT_QUEUE_DIR" "$SEDIMENT_SESSION" "$stop_active" <<'PYEOF'
+python3 - "$SEDIMENT_QUEUE_DIR" "$SEDIMENT_SESSION" "$stop_active" "$SEDIMENT_AGENT" <<'PYEOF'
 import json, os, sys, time
 
-qdir, sid, stop_active = sys.argv[1], sys.argv[2], sys.argv[3]
+qdir, sid, stop_active, agent = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 
 # 读队列标记
 marks = []
@@ -55,31 +55,36 @@ for fn in files:
     except Exception:
         continue
 
-# 写 session_end 标记（跨会话沉淀用）
-marker = {
-    "time": time.strftime("%Y-%m-%d %H:%M:%S"),
-    "type": "session_end",
-    "detail": "",
-    "session_id": sid or "",
-}
-fn_out = f"{time.time_ns()}-session_end.json"
-with open(os.path.join(qdir, fn_out), "w") as f:
-    json.dump(marker, f)
+# 仅实质标记触发门禁/提醒（空 session_end 无 detail，不触发）
+real_marks = [m for m in marks if m.get("detail") or m.get("type") != "session_end"]
 
-# Codex Stop 门禁：有标记且未被 block 过 → 强制沉淀
-if marks and stop_active != "true":
-    types = [m.get("type", "?") for m in marks]
-    details = [m.get("detail", "") for m in marks if m.get("detail")]
-    t_sum = "/".join(sorted(set(types)))
-    reason = f"【知识沉淀门禁】检测到沉淀标记（{t_sum}）。结束前执行：①按归属路由建卡或更新（个人→personal/，跨项目→projects/common/，项目→项目卡）②更新 INDEX ③git commit。细节：{' | '.join(d[:120] for d in details)}"
-    # 读后即删（沉淀指令已下达，标记使命完成）
-    for fn in files:
-        try:
-            os.remove(os.path.join(qdir, fn))
-        except Exception:
-            pass
-    print(json.dumps({"decision": "block", "reason": reason}, ensure_ascii=False))
-# 无标记或已 block 过 → 静默放行
+if agent in ("codex", "zcode"):
+    # Codex / ZCode Stop 门禁：有实质标记且未 block 过 → 强制沉淀（读后即删）
+    if real_marks and stop_active != "true":
+        types = [m.get("type", "?") for m in real_marks]
+        details = [m.get("detail", "") for m in real_marks if m.get("detail")]
+        t_sum = "/".join(sorted(set(types)))
+        reason = f"【知识沉淀门禁】检测到沉淀标记（{t_sum}）。结束前执行：①按归属路由建卡或更新（个人→personal/，跨项目→projects/common/，项目→项目卡）②更新 INDEX ③git commit。细节：{' | '.join(d[:120] for d in details)}"
+        for fn in files:
+            try:
+                os.remove(os.path.join(qdir, fn))
+            except Exception:
+                pass
+        print(json.dumps({"decision": "block", "reason": reason}, ensure_ascii=False))
+    # 无实质标记或已 block 过 → 静默放行
+else:
+    # Hermes / Claude session_end：仅在有实质标记时写 session_end 跨会话提醒，
+    # 空提醒不写（否则每轮会话边界都空响沉淀提示）
+    if real_marks:
+        marker = {
+            "time": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "type": "session_end",
+            "detail": "",
+            "session_id": sid or "",
+        }
+        fn_out = f"{time.time_ns()}-session_end.json"
+        with open(os.path.join(qdir, fn_out), "w") as f:
+            json.dump(marker, f)
 PYEOF
 
 exit 0
