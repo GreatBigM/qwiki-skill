@@ -283,3 +283,10 @@
 - 仓库根目录即 skill 本体布局，install.sh 一键安装
 - references: spec.md / agents-md-structure.md / codegraph-quickstart.md
 - templates: index.md / routing.md / card.md / note.md
+
+## 2.4.2 (2026-08-28)
+
+### Added
+
+- install.sh 新增 pi 安装目标（探测 `~/.pi/agent` → 安装到 `~/.pi/agent/skills/<skill>`，pi 自动发现）
+- 版本 2.4.1 → 2.4.2
