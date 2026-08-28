@@ -1,6 +1,6 @@
 # Hook 机制（qwiki 自发生长基础设施，跨工具）
 
-> 2026-08-02 定稿，2026-08-18 增 ZCode。qwiki 知识自动生成的事件驱动层——hook 是触发器（写标记/注入指令），沉淀是 AI 的活（加载本 skill 执行）。多工具（Hermes/Claude Code/Codex/ZCode）同构，payload 差异由 `scripts/knowledge-sediment-lib.sh` 归一化，工具判定与输出协议由 `sediment_detect_tool` 承担（注册命令第 1 参为工具名）。
+> 2026-08-02 定稿，2026-08-18 增 ZCode，2026-08-28 增 pi。qwiki 知识自动生成的事件驱动层——hook 是触发器（写标记/注入指令），沉淀是 AI 的活（加载本 skill 执行）。多工具（Hermes/Claude Code/Codex/ZCode/pi）同构，payload 差异由 `scripts/knowledge-sediment-lib.sh` 归一化（pi 走原生 TypeScript 扩展 `qwiki-sediment.ts`，不经过 shell 脚本），工具判定与输出协议由 `sediment_detect_tool` 承担（注册命令第 1 参为工具名）。
 
 ## 原理：为什么用 hook 不用 SOUL
 
@@ -134,6 +134,20 @@ hooks:
 > `UserPromptSubmit`/`PostToolUse`/`PreToolUse`/`Stop`/`SessionEnd`/`SubagentStop`/`SubagentStart`/`PreCompact`/`PostCompact`。
 > payload 字段 snake_case（`session_id`/`cwd`/`prompt`/`tool_name`/`stop_hook_active`/`last_assistant_message`）。
 > 首次启用需 trust（`codex` TUI hooks 管理或 `--dangerously-bypass-hook-trust` 仅自动化场景）。
+
+### pi（~/.pi/agent/extensions/qwiki-sediment.ts，原生扩展）
+
+> pi 不读 shell hook 脚本，用原生 TypeScript 扩展实现同一套沉淀链路，复用同一标记队列（`${XDG_STATE_HOME:-~/.local/state}/qwiki/sediment`），与其余工具跨会话共享沉淀信号。
+
+| qwiki 事件 | pi 事件 | 行为 |
+|---|---|---|
+| `pre_llm`（注入检索引导+沉淀指令） | `before_agent_start`（引导持久注入 system prompt）+ `context` 可选 | 读队列→有实质标记则注入沉淀指令→读后即删 |
+| `post_tool`（写标记） | `tool_result` | `write`/`edit` 写 code_change 标记；`bash` 成功且命令含 make/build/compile/verify/flash/burn/烧录/编译 → 写 verify_done 标记 |
+| `session_end`（写跨会话提醒） | `session_shutdown` | 仍有未消费实质标记 → 写 session_end 标记 |
+
+- 安装：扩展放 `~/.pi/agent/extensions/qwiki-sediment.ts`（pi 自动发现，`/reload` 热重载）
+- 标记协议与 shell 脚本一致：`<ts>-<type>.json`，`{time, type, detail, session_id}`；detail 为空且 type=session_end 的不触发（与 hint.sh 一致）
+- 区别：pi 的引导注入在 `before_agent_start`（每次用户 prompt），非每轮 LLM 调用；标记在下一次用户 prompt 时被消费（沉淀是重活，跨 prompt 执行更合理）
 
 ## 沉淀链路（标记 → 注入 → 执行）
 
