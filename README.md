@@ -2,11 +2,11 @@
 
 AI 知识库管理技能（skill）—— 用九条命令管理你的二级知识库。
 
-qwiki 让 AI 助理拥有一个 git 管理的知识库：项目知识卡片 + 个人笔记 + 全局索引，按需加载、可检索、可沉淀。跨工具兼容（Hermes / Claude Code / Codex / ZCode），仓库根目录即 skill 本体，用一键脚本或手动复制安装。
+qwiki 让 AI 助理拥有一个 git 管理的知识库：项目知识卡片 + 个人笔记 + 全局索引，按需加载、可检索、可沉淀。跨工具兼容（Hermes / Claude Code / Codex / ZCode / pi），仓库根目录即 skill 本体，用一键脚本或手动复制安装。
 
 ## 安装
 
-本 skill 支持多 agent 目标：Hermes / Claude Code / Codex / ZCode。安装脚本自动探测本机已安装的 agent，让用户选择安装目标。
+本 skill 支持多 agent 目标：Hermes / Claude Code / Codex / ZCode / pi。安装脚本自动探测本机已安装的 agent，让用户选择安装目标。pi 的事件驱动层由 `~/.pi/agent/extensions/qwiki-sediment.ts` 扩展承接（pi 无 hook 机制，扩展把同一标记协议接到 pi 事件模型，标记队列跨工具共享）。
 
 ```bash
 # 方式 1：交互选择安装目标（推荐，先下载再执行以保留交互）

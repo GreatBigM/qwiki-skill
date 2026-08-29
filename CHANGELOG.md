@@ -2,6 +2,14 @@
 
 本文件记录版本历史。版本号定义在 SKILL.md frontmatter 的 `version` 字段（单一真相源）。
 
+## 2.5.0 (2026-08-29)
+
+### Added（pi 支持入物料）
+
+- **补 pi 为正式支持的 agent**：SKILL.md「跨工具说明 / hook 注册检测 / 事件驱动层 / hook 脚本」四处、README「跨工具兼容 / 多 agent 目标」两处，全部把 pi 纳入口径
+- **pi 适配机制**：pi 无 hook 机制，由 `~/.pi/agent/extensions/qwiki-sediment.ts` 扩展承接同一标记协议（before_agent_start 注入检索引导+消费队列 / tool_result 写标记 / session_shutdown 跨会话提醒），标记队列 `${XDG_STATE_HOME:-~/.local/state}/qwiki/sediment/` 跨工具共享
+- 版本 2.4.2 → 2.5.0
+
 ## 2.4.1 (2026-08-19)
 
 ### Fixed（分发就绪：安装通道 + 沉淀信号收敛）
