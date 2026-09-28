@@ -64,8 +64,19 @@ if files:
         types = [m.get("type", "?") for m in marks]
         details = [m.get("detail", "") for m in marks if m.get("detail")]
         t_sum = "/".join(sorted(set(types)))
-        detail_part = (' | '.join(d[:120] for d in details)) if details else ''
-        instr = f"【知识沉淀待执行】检测到沉淀标记（{t_sum}）。执行：①按归属路由建卡或更新（个人→personal/，跨项目→projects/common/，项目→项目卡）②更新 INDEX ③git commit。" + (f"细节：{detail_part}" if detail_part else "")
+        # 兜底去重（2026-09-03 优化）：同文件重复标记只保留一个（toolcheck 已源头去重，此处防跨工具/旧标记重复）
+        seen_files = set()
+        uniq = []
+        for d in details:
+            d_stripped = d.strip()
+            if d_stripped.startswith("文件: "):
+                fp = d_stripped[len("文件: "):].strip()
+                if fp in seen_files:
+                    continue
+                seen_files.add(fp)
+            uniq.append(d_stripped)
+        detail_part = (' | '.join(u[:120] for u in uniq)) if uniq else ''
+        instr = f"【知识沉淀待执行】检测到沉淀标记（{t_sum}）。先核对 qwiki git log/INDEX 是否已沉淀（已建卡并提交则忽略本条）；未沉淀则执行：①按归属路由建卡或更新（个人→personal/，跨项目→projects/common/，项目→项目卡）②更新 INDEX ③git commit。" + (f"细节：{detail_part}" if detail_part else "")
 
 ctx = guide
 if instr:

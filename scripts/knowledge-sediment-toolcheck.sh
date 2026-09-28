@@ -39,11 +39,41 @@ except Exception:
       python3 - "$SEDIMENT_QUEUE_DIR" "$fpath" "$SEDIMENT_SESSION" <<'PYEOF'
 import json, os, sys, time
 qdir, fpath, sid = sys.argv[1], sys.argv[2], sys.argv[3]
+sid = sid or ""
+
+# 去重（2026-09-03 优化）：同 session 同文件已有未消费 code_change 标记则只更新时间戳，
+# 不重复写——治理类会话批量写同一文件不再刷屏（原 6 次写 MEMORY.md = 6 个标记）
+detail_want = f"文件: {fpath}"
+try:
+    existing = sorted(os.listdir(qdir)) if os.path.isdir(qdir) else []
+except Exception:
+    existing = []
+for fn in existing:
+    if not fn.endswith("-code_change.json"):
+        continue
+    try:
+        with open(os.path.join(qdir, fn)) as f:
+            m = json.load(f)
+        if (
+            m.get("type") == "code_change"
+            and m.get("session_id") == sid
+            and m.get("detail") == detail_want
+        ):
+            try:
+                m["time"] = time.strftime("%Y-%m-%d %H:%M:%S")
+                with open(os.path.join(qdir, fn), "w") as f:
+                    json.dump(m, f)
+            except Exception:
+                pass
+            sys.exit(0)  # 已有同文件未消费标记 → 跳过新写
+    except Exception:
+        continue
+
 marker = {
     "time": time.strftime("%Y-%m-%d %H:%M:%S"),
     "type": "code_change",
-    "detail": f"文件: {fpath}",
-    "session_id": sid or "",
+    "detail": detail_want,
+    "session_id": sid,
 }
 fn = f"{time.time_ns()}-code_change.json"
 with open(os.path.join(qdir, fn), "w") as f:

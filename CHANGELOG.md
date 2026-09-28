@@ -1,4 +1,11 @@
 # Changelog
+## 2.5.1 (2026-09-28)
+
+### Changed
+
+- 回灌本机 Hermes 副本的实测修正：沉淀标记去重优化（09-03：toolcheck 源头去重 + inject 兜底去重）
+- 版本 2.5.0 → 2.5.1
+
 
 本文件记录版本历史。版本号定义在 SKILL.md frontmatter 的 `version` 字段（单一真相源）。
 
