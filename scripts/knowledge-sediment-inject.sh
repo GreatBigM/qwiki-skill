@@ -34,7 +34,7 @@ import json, os, sys
 qdir, prompt, agent = sys.argv[1], sys.argv[2], sys.argv[3]
 
 # 检索引导（固定注入，每轮生效）——检索链单一真相源在此
-guide = "【知识库检索】涉及项目/技术/历史问题先查 ~/qwiki：INDEX.md（全局目录）→ 知识文件（projects/<项目>/ 或 personal/）→ 相关卡；查不到再凭经验或 web。沉淀规则：验证结论/代码修改/子代理产出自动写卡（≤5 页/会话）。"
+guide = "【工作环境】代码仓唯一入口 = /mnt/data/<项目>/CLAUDE.md（仓内不再放 AGENTS.md）；Hermes 侧环境导航见 ~/.hermes/AGENTS.md。【知识库检索】涉及项目/技术/历史问题先查 ~/qwiki：INDEX.md（全局目录）→ 知识文件（projects/<项目>/ 或 personal/）→ 相关卡；查不到再凭经验或 web。沉淀规则：验证结论/代码修改/子代理产出自动写卡（≤5 页/会话）。"
 
 # 沉淀指令（有标记才追加）
 instr = ""

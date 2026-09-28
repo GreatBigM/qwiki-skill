@@ -1,4 +1,11 @@
 # Changelog
+## 2.5.2 (2026-09-28)
+
+### Changed
+
+- **hook 注入文案加「工作环境」一行**（`scripts/knowledge-sediment-inject.sh`）：代码仓唯一入口 = `/mnt/data/<项目>/CLAUDE.md`、Hermes 侧环境导航 `~/.hermes/AGENTS.md`（配合入口文件定案 09-28：仓内不再放 AGENTS.md）。这是「规约每轮在场」的唯一可控通道
+- 版本 2.5.1 → 2.5.2
+
 ## 2.5.1 (2026-09-28)
 
 ### Changed
