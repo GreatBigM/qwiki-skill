@@ -1,7 +1,7 @@
 ---
 name: qwiki
 description: 个人知识库管理：卡片索引、知识沉淀、自动检索，AI 替你积累项目经验。
-version: 2.5.2
+version: 2.5.3
 author: GreatBigM
 license: MIT
 category: knowledge
@@ -210,6 +210,31 @@ AI:  执行操作 → 回报结果
 - 卡片身份：note 是随笔卡（personal/ 库，个人来源），card 是模块卡（projects/ 库，项目来源）——两个库、归属由来源决定，**无形态演进**；跨库归位（归属错误时）由 sync 结构审视处理
 - 和 import 的区别：note 无项目目录，一条 INDEX 行 + 一个 .md
 - 写完后 `cd ~/qwiki && git add -A && git commit -m "note: <标题>"`
+
+---
+
+## 沉淀标记核实（会话开头被注入「知识沉淀待执行」时）
+
+hook 只在**本轮注入文本**里告诉你「有标记」，标记文件本身已被 inject **读后即删**——先核实再动手，别照着空标记硬造卡。
+
+**第一步：看注入文本有没有「细节：…」段**
+- 有细节 ⇒ 真产出（subagent_stop 的 detail = role|状态|摘要），照细节建卡/更新
+- 只有「检测到沉淀标记（xxx）」无细节 ⇒ detail 为空（退化/陈旧标记），核实后多半结论是「无需沉淀」
+- **队列目录为空不能证明没有标记**（读完即删是常态）；队列目录 mtime ≈ 本会话启动时刻 = 标记刚被消费
+
+**第二步：核实顺序（判「无待沉淀」前必跑，缺一步不算核对过）**
+1. 库侧现状：`cd ~/qwiki && git log --oneline -12 && git status --short` —— 工作区干净且时间窗内已有对应 commit ⇒ 产出已沉淀，标记属陈旧遗留
+2. 反查产出事件是否真的存在（Hermes 侧 state.db，只读连接即可，不必停任何进程）：
+   - `select session_id,timestamp from messages where tool_calls like '%delegate_task%' and timestamp > <窗口起点 epoch> order by timestamp desc`
+   - 再看 `sessions`（id/model/started_at/title），`platform=subagent` 的会话才是真子代理；窗口内 0 条 delegate_task ⇒ 不存在产出该标记的子代理，标记必为陈旧/退化
+3. 跨工具排查：队列跨工具共享（lib.sh `SEDIMENT_QUEUE_DIR`），标记可能来自别的 agent —— 查各自会话落点的新增/改动（Claude `~/.claude/projects/**/*.jsonl` 按 mtime；本机已卸载的工具不必再列）
+4. 判定并回报：未沉淀 → 按归属路由建卡/更新 + INDEX + commit；已沉淀 → 忽略本条，给出依据（commit hash / 时间窗）
+
+**坑**
+- `agent.log` 里反复出现的 `shell hook registered: subagent_stop` **只是进程启动日志**（no_agent cron worker 每几分钟起一次也照打），不是子代理运行过的证据——别据此认定「有子代理活动」
+- 退化/陈旧标记会一直躺在队列里，等**下一次任意工具的注入**才被清掉 ⇒ 会在几天后「突然」出现在某个会话开头；空 detail 是它的指纹
+- 已删标记无法从日志回捞（grep 注入文案/标记类型名都无痕）——注入文本是唯一残留证据；别在别处找标记文件，队列目录只有一个真相源
+- 结论必须写进回复：查了什么、结论、依据、**证伪项**（用户要看到核查痕迹，不接受「无可沉淀」的静默一笔带过）
 
 ---
 
