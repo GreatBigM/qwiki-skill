@@ -1,4 +1,13 @@
 # Changelog
+## 2.6.1 (2026-10-12)
+
+### Fixed
+
+- **`install.sh` 备份落点移出 skills 扫描根**（本机重演一次后修掉）：原先把旧版 `mv` 到 `${dest}.bak.<ts>`＝`~/.claude/skills/qwiki.bak.<ts>`，而各 agent 按「含 `SKILL.md` 的目录」发现技能、不看目录名 ⇒ **每次升级都在技能列表里多出一个同名技能**（重名歧义下会静默跳过其一）。改为落 `${dest_dir%/skills}/skills-backup/`，即 `~/.claude/skills-backup/qwiki.bak.<ts>`
+- 存量残留：`~/.claude/skills/` 与 `~/.hermes/skills/` 下各一个 `qwiki.bak.20261012113713` 已**移入**新位置（未删除，仍可回滚）
+- README 的备份路径说明、install.sh 收尾提示同步
+- 版本 2.6.0 → 2.6.1
+
 ## 2.6.0 (2026-10-12)
 
 ### Added

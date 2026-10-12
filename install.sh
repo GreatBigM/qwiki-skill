@@ -62,7 +62,11 @@ install_one() {
                 echo "    本地 v${old_v} 高于远端 v${new_v}（开发版，覆盖安装）"
             fi
         fi
-        local bak="${dest}.bak.$(date +%Y%m%d%H%M%S)"
+        # 备份必须落在 skills 扫描根之外：agent 按「含 SKILL.md 的目录」发现技能、不看目录名，
+        # 备份留在扫描根内会被当成第二个同名技能加载（重名歧义 → 静默跳过其一）
+        local bak_dir="${dest_dir%/skills}/skills-backup"
+        mkdir -p "${bak_dir}"
+        local bak="${bak_dir}/${SKILL_NAME}.bak.$(date +%Y%m%d%H%M%S)"
         echo "    备份旧版到 ${bak}"
         mv "${dest}" "${bak}"
     else
@@ -163,5 +167,5 @@ echo "   - Hermes: 新会话自动加载，当前会话 /reload-skills 生效"
 echo "   - Claude Code / Codex / ZCode / pi: 新会话自动加载"
 echo ""
 echo "快速开始：对 AI 说 \"qwiki init\" 初始化知识库"
-echo "更新：重跑本脚本即升级（自动备份旧版到 .bak.<时间戳>）"
+echo "更新：重跑本脚本即升级（旧版备份到 <tool 根>/skills-backup/，扫描根外）"
 echo "指定目标：bash install.sh --target hermes,claude,zcode,pi  或  --all"
