@@ -73,8 +73,8 @@ TCP TX 137 Mbps，UDP 98 Mbps 零丢包。
 
 ```
 ## 口径
-设备 <IP>（eth0 已摘，无并行 iperf） / AP <AP 品牌> <AP 型号> 40MHz / RSSI -38~-40
-/ 同日交错 ABAB / 每点 120s / n=2 / 固件 commit 9b5681a78
+设备 <IP>（eth0 已摘，无并行 iperf） / AP <AP 型号> ch<信道> <带宽> / RSSI -38~-40
+/ 同日交错 ABAB / 每点 120s / n=2 / 固件 commit <hash>
 
 ## 数据
 | 臂 | TCP TX P1 | UDP TX | UDP 丢包 |
@@ -86,7 +86,7 @@ TCP TX 137 Mbps，UDP 98 Mbps 零丢包。
 采纳。UDP 丢包 18%→1.8% 为主判据；TCP TX +4% 在噪声内（n=2 不足以判）。
 
 ## 局限 · 遗留
-仅 AP <AP 品牌> <AP 型号> 单点；RSSI 优于 -45 时未测；**本结论不适用于 2.4G 段**。
+仅 AP <AP 型号> ch<信道> 单点；RSSI 优于 -45 时未测；**本结论不适用于 2.4G 段**。
 ```
 
 ---
