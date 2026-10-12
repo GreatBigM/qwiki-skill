@@ -3,7 +3,7 @@ title: <标题>
 type: note
 date: <YYYY-MM-DD>
 tags: [<标签>]
-summary: <一句话总结>（真相源：INDEX 登记/检索直接提取）
+summary: <一句话总结>
 ---
 
 # <标题>

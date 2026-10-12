@@ -1,7 +1,7 @@
 ---
 name: qwiki
 description: 个人知识库管理：卡片索引、知识沉淀、自动检索，AI 替你积累项目经验。
-version: 2.6.2
+version: 2.7.0
 author: GreatBigM
 license: MIT
 category: knowledge
@@ -164,11 +164,12 @@ AI:  执行操作 → 回报结果
 1. 一致性校验（报告修复）：
    - INDEX 死链/漏登记（登记行指向的文件是否存在）
    - **双链死链检测**：扫描全库 `[[...]]` 目标，对照知识库文件表（slug/项目-slug），报告悬空链接（见 skill 根目录 `SCHEMA.md` §知识互联）
-2. **防腐化判定**（按 skill 根目录 `SCHEMA.md` §卡片身份 活知识原则）：
-   - 死链清单 → 修正引用
-   - 与代码/实测矛盾的卡 → 修正内容
-   - 完全不符合现实的卡 → 提出销毁建议（确认后删）
-   - 孤岛（零入链）→ 标记冷门保留，不销毁
+2. **防腐化判定**（按 skill 根目录 `SCHEMA.md` §卡片身份 活知识原则与防腐化判定标准，**按容器分轨**）：
+   - 死链清单 → 修正引用（两轨同）
+   - **覆盖型**（模块卡 / 随笔卡）与代码/实测矛盾 → **修正内容**；不可救 → 提出销毁建议（确认后删）
+   - **追加型**（轨迹卡 / 各事件卡）被推翻 → **追加「后续修正」标注**（或标 `已失效` / `已被 <卡> 取代`），**不改原行、不销毁**
+   - **聚合卡出现零入链 = 异常**（它本该被引用）→ 查为什么；事件卡零入链属正常（散挂 INDEX），保留标记冷门
+   - **轨迹卡归属检查**：每张轨迹卡的入链里至少应有 1 张模块卡；没有 → 报「这条线缺一张模块卡」
 3. **表达形态体检**（按 skill 根目录 `SCHEMA.md` §表达形态）——作用域：**设计说明 / 问题说明形态的卡（按正文结构判定）＋ 本次新写入的卡**；存量模块卡、随笔卡不报，避免误报刷屏：
    - 该给图（结构分层 / 跨 ≥2 组件 / ≥3 步流转 / 含时序竞态）却纯文字 → 报
    - 图内节点、伪代码关键行无真实符号名或 `file:line` → 报
@@ -248,18 +249,21 @@ INDEX 条目数、已入驻项目、知识文件数。
 
 ---
 
-## 知识文件模板（卡片形态）
+## 知识文件模板（角色 × 骨架）
 
-按形态选模板——**形态之别在模板，不在 `type` 值**（三形态 card 的 `type` 一律是 `card`）：
+**先定角色（聚合 / 事件），再选骨架**——骨架之别在模板，不在 `type` 值（card 一律 `type: card`）：
 
-| 形态 | 模板 | type |
-|------|------|------|
-| 模块卡（八段：模块边界 / 职责描述 / 架构设计 / 技术栈 / 代码规范 / 配置命令 / 模块间关系 / 相关） | `templates/card-module.md` | card |
-| 设计说明卡（设计目标 / 结构图 / 流向图 / 关键设计决策 / 时序图 / 相关） | `templates/card-design.md` | card |
-| 问题说明卡（现象 / 根因 / 正常流 vs 出错流 / 修复 / 验证 / 复用手势 / 相关） | `templates/card-issue.md` | card |
-| 随笔卡（背景 / 要点 / 结论，自由取舍） | `templates/note-general.md` | note |
+| 角色 | 骨架 | 模板 | type |
+|------|------|------|------|
+| 聚合 | 模块卡（八段：模块边界 / 职责描述 / 架构设计 / 技术栈 / 代码规范 / 配置命令 / 模块间关系 / 相关） | `templates/card-module.md` | card |
+| 聚合 | 轨迹卡（范围与依据 / 一句话 / 保留 / 拆除 / 否决 / 仅测量 / 未定 / 当前快照 / 卡间索引 / 过时修正标注 / 相关） | `templates/card-track.md` | card |
+| 事件 | 实测卡（一句话 / 口径 / 数据 / 裁决 / 可复用 / 局限 / 状态 / 相关） | `templates/card-measurement.md` | card |
+| 事件 | 问题说明卡（现象 / 根因 / 正常流 vs 出错流 / 修复 / 验证 / 复用手势 / 相关） | `templates/card-issue.md` | card |
+| 事件 | 审查卡（**候选骨架，暂不立模板**：范围 / 逐条发现分级 / 可达性 / 结论） | — | card |
+| 按需 | 设计说明卡（设计目标 / 结构图 / 流向图 / 关键设计决策 / 时序图 / 相关）——模块卡「架构设计」段的深化 | `templates/card-design.md` | card |
+| 个人 | 随笔卡（背景 / 要点 / 结论，自由取舍） | `templates/note-general.md` | note |
 
-> 卡片公共约定与形态判据见 skill 根目录 `SCHEMA.md` §卡片身份、§表达形态——本文件不复述。
+> 卡片角色判据、公共约定与表达形态见 skill 根目录 `SCHEMA.md` §卡片身份、§表达形态——本文件不复述。
 
 ## 架构文档
 
@@ -285,7 +289,7 @@ INDEX 条目数、已入驻项目、知识文件数。
 
 - 宪法（与 SKILL.md 平级，唯一真相源）：`SCHEMA.md`（随安装拷贝）
 - init 模板（建库）：`templates/index.md`、`templates/history.md`
-- 卡片模板（生成卡，按形态选）：`templates/card-module.md`（模块卡）、`templates/card-design.md`（设计说明卡）、`templates/card-issue.md`（问题说明卡）、`templates/note-general.md`（随笔卡）
+- 卡片模板（生成卡，先定角色再选骨架）：`templates/card-module.md`（聚合·模块卡）、`templates/card-track.md`（聚合·轨迹卡）、`templates/card-measurement.md`（事件·实测卡）、`templates/card-issue.md`（事件·问题说明卡）、`templates/card-design.md`（按需·设计说明卡）、`templates/note-general.md`（个人·随笔卡）
 - hook 脚本（自发生长事件驱动，四 hook 工具兼容 + pi 扩展）：`scripts/knowledge-sediment-lib.sh`（归一化层）+ `scripts/knowledge-sediment-hint.sh`、`scripts/knowledge-sediment-toolcheck.sh`、`scripts/knowledge-sediment-inject.sh`、`scripts/knowledge-sediment-subagent.sh`（ZCode 无 SubagentStop，不注册该项）；pi 适配见 `~/.pi/agent/extensions/qwiki-sediment.ts`（无 hook，事件映射同协议）
 - 参考：`references/agent-hook.md`（hook 机制说明 + 三工具注册表）
 - 版本记录：`CHANGELOG.md`（随安装拷贝，记录版本历史）
