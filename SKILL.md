@@ -1,7 +1,7 @@
 ---
 name: qwiki
 description: 个人知识库管理：卡片索引、知识沉淀、自动检索，AI 替你积累项目经验。
-version: 2.7.3
+version: 2.8.0
 author: GreatBigM
 license: MIT
 category: knowledge
@@ -65,9 +65,8 @@ AI:  执行操作 → 回报结果
 1. `mkdir -p ~/qwiki/personal ~/qwiki/projects/common`
 2. `cd ~/qwiki && git init`
 3. 创建 INDEX.md（按 `templates/index.md` 模板生成：空表 + personal 分区 + 维护规则脚注）
-4. 创建 HISTORY.md（按 `templates/history.md` 模板生成：大事记档案——方法论定稿/架构决策/实践结论，事件粒度）
-5. `cd ~/qwiki && git add -A && git commit -m "init qwiki"`
-6. **hook 注册检测**（自发生长事件驱动层，跨工具通用）：
+4. `cd ~/qwiki && git add -A && git commit -m "init qwiki"`
+5. **hook 注册检测**（自发生长事件驱动层，跨工具通用）：
    - 检测当前工具（Hermes `~/.hermes/config.yaml` / Claude `~/.claude/settings.json` / Codex `~/.codex/hooks.json` / ZCode `~/.zcode/cli/config.json` / pi `~/.pi/agent/extensions/qwiki-sediment.ts`）
    - 检查该工具 hooks 是否已注册 knowledge-sediment 脚本（session_end/stop + post_tool + pre_llm；ZCode 无 subagent 事件，注册三项即可；pi 无 hook 机制，由扩展事件映射承接同协议）
    - 缺失 → 提示"知识自动沉淀依赖 hook 事件驱动（每轮检索引导 + 代码修改即时感知 + 会话结束补沉淀）。是否注册？"→ Y → 按 `references/agent-hook.md` 的注册表配置 + 复制 `scripts/knowledge-sediment-*.sh` 到工具 scripts 目录
@@ -163,7 +162,7 @@ AI:  执行操作 → 回报结果
 
 1. 一致性校验（报告修复）：
    - INDEX 死链/漏登记（登记行指向的文件是否存在）
-   - **素材误登 INDEX**（表内出现 `resource/`｜`scripts/` 等素材/脚本路径，或旧名 `references/`｜`design/`）→ 删行（内容若只在表内留痕，先转 HISTORY）
+   - **素材误登 INDEX**（表内出现 `resource/`｜`scripts/` 等素材/脚本路径，或旧名 `references/`｜`design/`）→ 删行（库内变更查 git 历史，不另立档案文件）
    - **双链死链检测**：扫描全库 `[[...]]` 目标，对照**卡片表**（slug/项目-slug），报告悬空链接；另报「卡片里 `[[...]]` 指向素材」的口径错误（素材只做路径引用，见 skill 根目录 `SCHEMA.md` §知识互联）
 2. **防腐化判定**（按 skill 根目录 `SCHEMA.md` §卡片身份 活知识原则与防腐化判定标准，**按容器分轨**）：
    - 死链清单 → 修正引用（两轨同）
@@ -276,7 +275,7 @@ INDEX 条目数、已入驻项目、知识文件数。
 
 - **宪法唯一真相源在本 skill 根目录 `SCHEMA.md`**：随 skill 发布/安装；知识库内不放置 SCHEMA 实例（曾放置 = 第三层 copy——实例改动与 skill 快照漂移，module-slug 示例漏同步教训）
 - 宪法变更 = 改本文件 + bump 版本 + 发布；**无模板 ↔ 实例同步义务**（无实例可同步）
-- 新库 init 不生成 SCHEMA.md（知识库骨架 = INDEX/HISTORY + 目录）；卡片公约由加载本 skill 时读取根目录 SCHEMA.md
+- 新库 init 不生成 SCHEMA.md（知识库骨架 = INDEX + 卡片 + `resource/` 素材 + `scripts/` 脚本）；卡片公约由加载本 skill 时读取根目录 SCHEMA.md
 
 ### 解耦声明（2026-08-02 定稿，v1.9.0）
 
@@ -289,7 +288,7 @@ INDEX 条目数、已入驻项目、知识文件数。
 本 skill 依赖以下模板与参考文件（安装时随 SKILL.md 一并打包，请勿删除）：
 
 - 宪法（与 SKILL.md 平级，唯一真相源）：`SCHEMA.md`（随安装拷贝）
-- init 模板（建库）：`templates/index.md`、`templates/history.md`
+- init 模板（建库）：`templates/index.md`
 - 卡片模板（生成卡，先定角色再选骨架）：`templates/card-module.md`（聚合·模块卡）、`templates/card-track.md`（聚合·轨迹卡）、`templates/card-measurement.md`（事件·实测卡）、`templates/card-issue.md`（事件·问题说明卡）、`templates/card-design.md`（按需·设计说明卡）、`templates/note-general.md`（个人·随笔卡）
 - hook 脚本（自发生长事件驱动，四 hook 工具兼容 + pi 扩展）：`scripts/knowledge-sediment-lib.sh`（归一化层）+ `scripts/knowledge-sediment-hint.sh`、`scripts/knowledge-sediment-toolcheck.sh`、`scripts/knowledge-sediment-inject.sh`、`scripts/knowledge-sediment-subagent.sh`（ZCode 无 SubagentStop，不注册该项）；pi 适配见 `~/.pi/agent/extensions/qwiki-sediment.ts`（无 hook，事件映射同协议）
 - 参考：`references/agent-hook.md`（hook 机制说明 + 三工具注册表）

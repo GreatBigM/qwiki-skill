@@ -12,7 +12,6 @@
 ```
 ~/qwiki/                          ← AI 知识库（git 管理，跨工具共享）
 ├── INDEX.md                     ← 全局**卡片**目录，一张平表（检索总入口；素材不进表）
-├── HISTORY.md                   ← 变更记录
 ├── personal/                    ← 个人笔记（qwiki note，随笔卡）
 └── projects/<项目>/             ← 项目知识（**根层 .md 全是卡片**）
     ├── <模块名>.md              ← 项目卡（模块 / 设计说明 / 问题说明三形态）
@@ -60,7 +59,7 @@
 
 ## YAML 头公约（v1）
 
-YAML 头适用于**卡片与知识文档**：`personal/` 下的 note、`projects/<项目>/` 下的卡片、`projects/common/` 下的卡。排除：INDEX.md/HISTORY.md（索引与档案文件）、templates/（模板本身）、`projects/<项目>/spec.md`（workbench 项目规格，另立规矩），以及 `resource/`（素材）与 `scripts/`（脚本）下的文档——§卡片身份 已定义素材是「卡片引用的数据来源，不是卡片」，不强制 YAML 头。
+YAML 头适用于**卡片与知识文档**：`personal/` 下的 note、`projects/<项目>/` 下的卡片、`projects/common/` 下的卡。排除：INDEX.md（索引文件）、templates/（模板本身）、`projects/<项目>/spec.md`（workbench 项目规格，另立规矩），以及 `resource/`（素材）与 `scripts/`（脚本）下的文档——§卡片身份 已定义素材是「卡片引用的数据来源，不是卡片」，不强制 YAML 头。
 > **命名沿革（v2.7.3）**：素材目录原为 `references/`｜`design/`｜`archive/`｜`change/`｜`data/` 五个按来源分的名字，2026-10-12 合并为单一 `resource/`——**一个角色一个名字**，位置可机械判定。
 
 ```yaml
@@ -185,4 +184,4 @@ related: [<相对路径>]          # 可选：相关文档
 ## 迁移规则
 
 - **L2→L1**：只能升到 memory，**永远不允许写入 SOUL.md**
-- **HISTORY.md 只进不出**：HISTORY 档案内容不删，只追加；过时内容加 `deprecated` 标记而非删除（注意：此规则仅限 HISTORY.md，卡片按§卡片身份的活知识原则可修正/销毁）
+- **知识库不含历史档案文件**：方法论定稿与架构决策的沿革是 **skill 自己的历史**（在 skill 仓的 `CHANGELOG.md` 与 `SKILL.md`/`SCHEMA.md` 当前态里），随 skill 分发——**流是单向的：仓 → 实例**。实例侧不持有、也不回灌这类记述；库内变更查 git 历史
