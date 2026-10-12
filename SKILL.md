@@ -1,7 +1,7 @@
 ---
 name: qwiki
 description: 个人知识库管理：卡片索引、知识沉淀、自动检索，AI 替你积累项目经验。
-version: 2.8.5
+version: 2.9.0
 author: GreatBigM
 license: MIT
 category: knowledge
@@ -160,6 +160,12 @@ AI:  执行操作 → 回报结果
 
 ## sync — 日常同步（一致性校验 + 防腐化 + 结构审视）
 
+0. **机器自检（先跑这个）**：`python3 <skill 根>/scripts/qwiki-check.py [知识库根]`（默认 `~/qwiki`）
+   - **只读**，退出码 0 = 全过、1 = 有失败项；8 项断言把下面的约定变成可执行检查：
+     卡片头部（H1 首位 / `>` 引言行 / 依据·状态）、INDEX 正投影（两列 / 一卡一行 / 无漏登记）、
+     INDEX 纯度（只登记卡片 / 无死链 / 摘要长度）、双链只连卡片、素材路径、命名约定、轨迹卡归属、YAML 可解析
+   - 下面是同一批约定的**说明与人工处置口径**；自检报什么，按对应条目处置
+
 1. 一致性校验（报告修复）：
    - INDEX 死链/漏登记（登记行指向的文件是否存在）
    - **INDEX 两列与卡片不一致**（「标题」列 ≠ 卡片 `title`，「总结」列 ≠ 卡片 `>` 引言行）→ 按卡片回填（INDEX 是卡片集的正投影，见 SCHEMA §INDEX 登记规则）
@@ -295,6 +301,7 @@ INDEX 条目数、已入驻项目、知识文件数。
 - 宪法（与 SKILL.md 平级，唯一真相源）：`SCHEMA.md`（随安装拷贝）
 - init 模板（建库）：`templates/index.md`
 - 卡片模板（生成卡，先定角色再选骨架）：`templates/card-module.md`（聚合·模块卡）、`templates/card-track.md`（聚合·轨迹卡）、`templates/card-measurement.md`（事件·实测卡）、`templates/card-issue.md`（事件·问题说明卡）、`templates/card-design.md`（按需·设计说明卡）、`templates/note-general.md`（个人·随笔卡）
+- **自检脚本**：`scripts/qwiki-check.py`（SCHEMA/SKILL 各项约定的可执行版；只读、仅需 python3 标准库，PyYAML 可选）
 - hook 脚本（自发生长事件驱动，四 hook 工具兼容 + pi 扩展）：`scripts/knowledge-sediment-lib.sh`（归一化层）+ `scripts/knowledge-sediment-hint.sh`、`scripts/knowledge-sediment-toolcheck.sh`、`scripts/knowledge-sediment-inject.sh`、`scripts/knowledge-sediment-subagent.sh`（ZCode 无 SubagentStop，不注册该项）；pi 适配见 `~/.pi/agent/extensions/qwiki-sediment.ts`（无 hook，事件映射同协议）
 - 参考：`references/agent-hook.md`（hook 机制说明 + 三工具注册表）
 - 版本记录：`CHANGELOG.md`（随安装拷贝，记录版本历史）
