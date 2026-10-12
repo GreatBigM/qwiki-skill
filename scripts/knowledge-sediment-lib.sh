@@ -160,7 +160,11 @@ except Exception:
 e = d.get('hook_event_name', '')
 if e in ('pre_llm_call', 'post_tool_call', 'on_session_end', 'subagent_stop'):
     print('hermes')
-elif e == 'SessionEnd':
+elif e in ('UserPromptSubmit', 'PostToolUse', 'SubagentStop', 'SessionEnd', 'SessionStart',
+           'PreToolUse', 'PreCompact', 'PostCompact'):
+    # Claude Code 与 ZCode 事件名同为 PascalCase 且输出协议相同，统一归 claude。
+    # 2026-10-12 修：原表只认 SessionEnd，致 Claude 侧 inject/toolcheck/subagent 三个事件
+    # 全判 unknown → 检索引导与沉淀指令**从未注入**（注册命令漏传工具名时无兜底）
     print('claude')
 elif e == 'Stop':
     print('codex')

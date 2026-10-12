@@ -1,4 +1,25 @@
 # Changelog
+## 2.8.1 (2026-10-12)
+
+### Fixed
+
+- **Claude Code 侧的检索引导与沉淀指令从未注入过**（本次审查实测发现，最重的一条）。两处叠加：
+  1. `sediment_detect_tool` 的 payload 兜底表**只认 `SessionEnd`**，`UserPromptSubmit` / `PostToolUse` / `SubagentStop` 三个事件全判 `unknown`；而 `inject.sh` 对 `unknown` 是静默 `pass`
+  2. `references/agent-hook.md` 的 Claude 注册表**没按本文自己的规矩传工具名**（第 1 参），settings.json 里也就没传——两条路同时断
+  - 修：兜底表补 PascalCase 事件 → `claude`；注册表与实例 settings.json 的 4 条命令补 `bash <script> claude`。实测两条路径均正常输出 `hookSpecificOutput`
+  - 附带影响：此前唯一生效的是 CLAUDE.md 里那份「口径备份」——即 hook 那路是断的而无人察觉
+- **轨迹卡容器归属的内部矛盾**（§骨架表写「覆盖（逐项追加）」，§公共约定与§活知识原则归「追加型」）。统一为 **追加型**，并把「§F 当前快照可覆盖改写」写成**唯一例外**（§F 本就是「当前值」，与 §H「只追加」不冲突）
+- **v2.7 重构残留**：「三形态」表述（SCHEMA §目录结构、SKILL §note）→ 两角色 × 骨架；冲突标注示例的 `reviews/` → `resource/`；SKILL 引用已删的 ROUTING；§migrate 的模板清单缺轨迹卡/实测卡；§migrate 收尾提示的旧目录名
+- **§公共约定 覆盖型漏列设计说明卡** → 补上；`> 依据` / `> 状态` 都补了「判不出写 `未标注`，不要编」的兜底
+- **§知识互联「升级（note→card）不动链接」与 §无形态演进「不存在演进」互斥** → 改为「跨库归位只更新链接目标」
+- **§迁移规则 的「L2→L1：只能升到 memory」** 是 Hermes 记忆分层的孤词（全篇无 L1/L2 定义）→ 删
+- SKILL §deinit 一条命令**引号未闭合**
+- 实例侧同步：**75 张卡 `title` ≠ 正文 H1**（占 41%，其中 27 张 H1 字面就是「一句话」）→ H1 统一回填 `title`；**3 张 `type` 越界**（`design`/`task`/`方法论`）→ 归位为 `note`
+
+### 附带
+
+- 版本 2.8.0 → 2.8.1
+
 ## 2.8.0 (2026-10-12)
 
 ### Removed

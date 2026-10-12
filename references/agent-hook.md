@@ -56,16 +56,16 @@ hooks:
 {
   "hooks": {
     "UserPromptSubmit": [
-      {"hooks": [{"type": "command", "command": "~/.claude/scripts/knowledge-sediment-inject.sh"}]}
+      {"hooks": [{"type": "command", "command": "bash ~/.claude/scripts/knowledge-sediment-inject.sh claude"}]}
     ],
     "PostToolUse": [
-      {"hooks": [{"type": "command", "command": "~/.claude/scripts/knowledge-sediment-toolcheck.sh"}]}
+      {"hooks": [{"type": "command", "command": "bash ~/.claude/scripts/knowledge-sediment-toolcheck.sh claude"}]}
     ],
     "SessionEnd": [
-      {"hooks": [{"type": "command", "command": "~/.claude/scripts/knowledge-sediment-hint.sh"}]}
+      {"hooks": [{"type": "command", "command": "bash ~/.claude/scripts/knowledge-sediment-hint.sh claude"}]}
     ],
     "SubagentStop": [
-      {"hooks": [{"type": "command", "command": "~/.claude/scripts/knowledge-sediment-subagent.sh"}]}
+      {"hooks": [{"type": "command", "command": "bash ~/.claude/scripts/knowledge-sediment-subagent.sh claude"}]}
     ]
   }
 }

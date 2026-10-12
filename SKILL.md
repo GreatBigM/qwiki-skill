@@ -1,7 +1,7 @@
 ---
 name: qwiki
 description: 个人知识库管理：卡片索引、知识沉淀、自动检索，AI 替你积累项目经验。
-version: 2.8.0
+version: 2.8.1
 author: GreatBigM
 license: MIT
 category: knowledge
@@ -81,14 +81,14 @@ AI:  执行操作 → 回报结果
 2. **hook 清理**（与 init 注册对称）：
    - 从当前工具的 hooks 配置移除 knowledge-sediment 注册项
    - 删除 scripts 目录的 `knowledge-sediment-*.sh`
-   - 清空标记队列 `rm -rf "${XDG_STATE_HOME:-$HOME/.local/state}/qwiki/sediment/`
+   - 清空标记队列 `rm -rf "${XDG_STATE_HOME:-$HOME/.local/state}/qwiki/sediment/"`
 3. `cd ~/qwiki && cd .. && mv qwiki qwiki.bak.$(date +%Y%m%d)`
 
 ---
 
 ## import — 项目入驻（新增，保持纯粹）
 
-新项目从零入驻：AI 四轮阅读 SDK → 项目卡骨架 → 目录骨架 → INDEX 登记。**不含卡片化**（卡片归 migrate 和日常蒸馏时机）。
+新项目从零入驻：AI 四轮阅读 SDK → 项目卡**初版** → 目录骨架 → INDEX 登记。**不含卡片化**——意即不在这轮把历史知识蒸馏成卡（那归 migrate 与日常蒸馏）；本轮只出**一张项目卡初版**作为入口。
 
 输入：项目名、代码路径（可选——不依赖用户提供，见下）。
 
@@ -105,7 +105,7 @@ AI:  执行操作 → 回报结果
 | 源码阅读 | search_files + read_file（符号/调用链逐层追） | 无 |
 | manifest | repo 工具文件 | 无 |
 
-3. **项目知识卡是逐步迭代的活文档**——import 只给"可用的初版 + 迭代机制"，允许不完整但必须标注待验证项；任务完成/认知加深/踩坑时更新（与 ROUTING 自生长规则同构）
+3. **项目知识卡是逐步迭代的活文档**——import 只给"可用的初版 + 迭代机制"，允许不完整但必须标注待验证项；任务完成/认知加深/踩坑时更新（这正是「自发生长」——不等用户下令）
 
 ### 四轮阅读法（AI 读 SDK 的编排）
 
@@ -125,7 +125,7 @@ AI:  执行操作 → 回报结果
 3. **项目卡初版**：工程划分用多信号源交叉，编译相关章节标注"静态推导，待验证"
 4. `mkdir -p ~/qwiki/projects/<项目名>/`
 5. INDEX 追加项目区块
-6. 提示"项目 <项目名> 入驻完成：项目卡初版（含待验证清单）。若存在历史知识（references/design 等），执行 qwiki migrate <项目名> 做知识入迁。"
+6. 提示"项目 <项目名> 入驻完成：项目卡初版（含待验证清单）。若存在历史知识（项目 `resource/` 下的素材、或别处的旧文档），执行 qwiki migrate <项目名> 做知识入迁。"
 
 ---
 
@@ -135,7 +135,7 @@ AI:  执行操作 → 回报结果
 
 1. **来源盘点**：确认来源形态与规模（旧库目录 / 项目 `resource/`（旧名 references|design|archive）/ 笔记目录 / 导出文件），对照 INDEX 现有登记防重复
 2. **核心知识识别**：高频/知识最丰富者优先，一次 1-3 个模块
-3. **蒸馏建卡**（按形态选模板：模块卡 `templates/card-module.md` / 设计说明卡 `templates/card-design.md` / 问题说明卡 `templates/card-issue.md` / 随笔卡 `templates/note-general.md`）：
+3. **蒸馏建卡**（先定角色再选骨架，SCHEMA §卡片身份）：聚合卡 → 模块卡 `templates/card-module.md` / 轨迹卡 `templates/card-track.md` / 设计说明卡 `templates/card-design.md`；事件卡 → 实测卡 `templates/card-measurement.md` / 问题说明卡 `templates/card-issue.md` / 审查卡（无模板，按正文骨架写）；个人 → 随笔卡 `templates/note-general.md`。
    - 模块边界：search_files 确认文件清单
    - 素材：memory + 来源文档 + 代码验证
    - 卡片是「导航 + 核心事实」，细节指向来源/现有 references（相关卡片段），不搬运全文
@@ -212,7 +212,7 @@ AI:  执行操作 → 回报结果
 - YAML 头按公约：title/type/date 必填 + summary 真相源 + tags
 - 相关段用 `[[slug]]` 双链（文档级链接，见 skill 根目录 `SCHEMA.md` §知识互联）
 - 正文段落为参考骨架（背景/要点/结论），按需取舍，**不强制 schema**——写什么算什么，后续可随时补充
-- 卡片身份：note 是随笔卡（personal/ 库，个人来源），card 是项目卡（projects/ 库，项目来源，模块 / 设计说明 / 问题说明三形态）——两个库、归属由来源决定，**无形态演进**；跨库归位（归属错误时）由 sync 结构审视处理
+- 卡片身份：note 是随笔卡（personal/ 库，个人来源），card 是项目卡（projects/ 库，项目来源，**两角色 × 骨架**——聚合卡（模块/轨迹/设计说明）与事件卡（实测/问题说明/审查））——两个库、归属由来源决定，**无形态演进**；跨库归位（归属错误时）由 sync 结构审视处理
 - 和 import 的区别：note 无项目目录，一条 INDEX 行 + 一个 .md
 - 写完后 `cd ~/qwiki && git add -A && git commit -m "note: <标题>"`
 
