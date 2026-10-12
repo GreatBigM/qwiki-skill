@@ -1,4 +1,22 @@
 # Changelog
+## 2.7.3 (2026-10-12)
+
+### Changed
+
+- **素材目录五个名字合并为单一 `resource/`**——`references/`｜`design/`｜`archive/`｜`change/`｜`data/` 是**按来源**起的五个名字，指的是**同一个角色**（素材）。合并后 `projects/<项目>/` 下只剩三类，且**位置可机械判定**：
+  ```
+  根层 *.md   = 卡片
+  resource/   = 素材（知识卡片引用的数据来源）
+  scripts/    = 脚本
+  ```
+- **顺带消掉一处旧歧义**：原来 `design/` 一名既指「workbench 设计产物（素材）」又被人当成「设计说明卡」——§卡片身份 专门写过一段提醒去区分它。合并为 `resource/` 后这个歧义自动消失，那段提醒改写为沿革说明
+- `SCHEMA.md` §目录结构 / §INDEX 登记规则 / §YAML 头公约 / §卡片身份 / §知识互联 全部改用 `resource/`；`SKILL.md` §migrate / §sync / §note 的素材路径同步
+- 实例侧迁移（`~/qwiki`）：5 个项目共 234 个条目从旧目录并入 `resource/`（项目F 45 / 项目A 140 / 项目A-wifi 10 / 项目D 28 / 项目G 11，**无重名冲突**）；25 个卡片文件里 132 处素材路径引用改写；INDEX 表头「路径形如」示例同步
+- 另修两处「既不是卡也不是脚本」的 `.md`（本次一并归位）：
+  - `项目A/scripts/git-commit-format.md` 与 `项目F/scripts/git-commit-format.md` **内容完全相同**（跨项目重复归档）⇒ 合并为一张 common 卡 `[[git-commit-format]]`，两份脚本目录副本删除，两处引用文字改指卡片
+  - `项目F/scripts/README.md`（脚本清单 + 归属约定 + `<工具包>` 解散决策，此前不在 INDEX 里、检索不到）⇒ 归位为卡 `项目F-scripts-toolkit.md`
+- 版本 2.7.2 → 2.7.3
+
 ## 2.7.2 (2026-10-12)
 
 ### Changed

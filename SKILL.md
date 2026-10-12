@@ -1,7 +1,7 @@
 ---
 name: qwiki
 description: 个人知识库管理：卡片索引、知识沉淀、自动检索，AI 替你积累项目经验。
-version: 2.7.2
+version: 2.7.3
 author: GreatBigM
 license: MIT
 category: knowledge
@@ -132,9 +132,9 @@ AI:  执行操作 → 回报结果
 
 ## migrate — 知识入迁（非当前版本 → 当前 v4 卡片体系）
 
-**统一判据**：来源知识是否已是当前 v4 卡片体系？不是 → migrate。旧 wiki 遗产、本库 v2 遗产（references/design/archive）、其他工具沉淀、笔记导出——区别只在继承关系远近，动作一致：盘点 → 蒸馏建卡 → INDEX 回填。本库版本升级 = 把旧版本知识库当「别的知识库」迁入，而非库内原地变形。
+**统一判据**：来源知识是否已是当前 v4 卡片体系？不是 → migrate。旧 wiki 遗产、本库 v2 遗产（旧 references/design/archive，现统一在 `resource/`）、其他工具沉淀、笔记导出——区别只在继承关系远近，动作一致：盘点 → 蒸馏建卡 → INDEX 回填。本库版本升级 = 把旧版本知识库当「别的知识库」迁入，而非库内原地变形。
 
-1. **来源盘点**：确认来源形态与规模（旧库目录 / 项目 references|design|archive / 笔记目录 / 导出文件），对照 INDEX 现有登记防重复
+1. **来源盘点**：确认来源形态与规模（旧库目录 / 项目 `resource/`（旧名 references|design|archive）/ 笔记目录 / 导出文件），对照 INDEX 现有登记防重复
 2. **核心知识识别**：高频/知识最丰富者优先，一次 1-3 个模块
 3. **蒸馏建卡**（按形态选模板：模块卡 `templates/card-module.md` / 设计说明卡 `templates/card-design.md` / 问题说明卡 `templates/card-issue.md` / 随笔卡 `templates/note-general.md`）：
    - 模块边界：search_files 确认文件清单
@@ -163,7 +163,7 @@ AI:  执行操作 → 回报结果
 
 1. 一致性校验（报告修复）：
    - INDEX 死链/漏登记（登记行指向的文件是否存在）
-   - **素材误登 INDEX**（表内出现 `references/`｜`design/`｜`scripts/`｜`data/` 等素材路径）→ 删行（内容若只在表内留痕，先转 HISTORY）
+   - **素材误登 INDEX**（表内出现 `resource/`｜`scripts/` 等素材/脚本路径，或旧名 `references/`｜`design/`）→ 删行（内容若只在表内留痕，先转 HISTORY）
    - **双链死链检测**：扫描全库 `[[...]]` 目标，对照**卡片表**（slug/项目-slug），报告悬空链接；另报「卡片里 `[[...]]` 指向素材」的口径错误（素材只做路径引用，见 skill 根目录 `SCHEMA.md` §知识互联）
 2. **防腐化判定**（按 skill 根目录 `SCHEMA.md` §卡片身份 活知识原则与防腐化判定标准，**按容器分轨**）：
    - 死链清单 → 修正引用（两轨同）
@@ -208,7 +208,7 @@ AI:  执行操作 → 回报结果
 - **知识归属路由**（决定卡放哪）：
   - 个人方法论/工作哲学 → `~/qwiki/personal/`
   - 跨项目知识（反模式/通用经验/工具坑，来源项目、适用多项目）→ `~/qwiki/projects/common/`
-  - 项目特定知识 → 对应项目卡或 `references/`
+  - 项目特定知识 → 对应项目卡；分析报告/数据等素材 → 项目 `resource/`（素材不产卡）
 - **必填动作**（生成时自动做，三处一次填齐同一字符串）：YAML summary（真相源）+ 正文 `>` 行（渲染副本）+ INDEX 登记行
 - YAML 头按公约：title/type/date 必填 + summary 真相源 + tags
 - 相关段用 `[[slug]]` 双链（文档级链接，见 skill 根目录 `SCHEMA.md` §知识互联）
