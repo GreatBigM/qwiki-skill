@@ -1,7 +1,7 @@
 ---
 name: qwiki
 description: 个人知识库管理：卡片索引、知识沉淀、自动检索，AI 替你积累项目经验。
-version: 2.7.1
+version: 2.7.2
 author: GreatBigM
 license: MIT
 category: knowledge
@@ -141,7 +141,7 @@ AI:  执行操作 → 回报结果
    - 素材：memory + 来源文档 + 代码验证
    - 卡片是「导航 + 核心事实」，细节指向来源/现有 references（相关卡片段），不搬运全文
 4. **归属路由**：个人知识 → `~/qwiki/personal/`，跨项目 → `~/qwiki/projects/common/`，项目 → `~/qwiki/projects/<项目>/`
-5. **INDEX 回填**：新卡登记 + 核心 references 补登记（旧日志/单次分析类按自然淘汰）
+5. **INDEX 回填**：只登记新卡——**素材不进 INDEX**（它们是卡片引用的数据来源，见 SCHEMA §INDEX 登记规则）
 6. `cd ~/qwiki && git commit -m "migrate <来源>: <N> 张卡 + INDEX 回填"`
 7. 提示"迁移完成：N 张卡，INDEX 回填 M 条。"
 
@@ -163,7 +163,8 @@ AI:  执行操作 → 回报结果
 
 1. 一致性校验（报告修复）：
    - INDEX 死链/漏登记（登记行指向的文件是否存在）
-   - **双链死链检测**：扫描全库 `[[...]]` 目标，对照知识库文件表（slug/项目-slug），报告悬空链接（见 skill 根目录 `SCHEMA.md` §知识互联）
+   - **素材误登 INDEX**（表内出现 `references/`｜`design/`｜`scripts/`｜`data/` 等素材路径）→ 删行（内容若只在表内留痕，先转 HISTORY）
+   - **双链死链检测**：扫描全库 `[[...]]` 目标，对照**卡片表**（slug/项目-slug），报告悬空链接；另报「卡片里 `[[...]]` 指向素材」的口径错误（素材只做路径引用，见 skill 根目录 `SCHEMA.md` §知识互联）
 2. **防腐化判定**（按 skill 根目录 `SCHEMA.md` §卡片身份 活知识原则与防腐化判定标准，**按容器分轨**）：
    - 死链清单 → 修正引用（两轨同）
    - **覆盖型**（模块卡 / 随笔卡）与代码/实测矛盾 → **修正内容**；不可救 → 提出销毁建议（确认后删）
