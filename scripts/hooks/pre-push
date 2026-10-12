@@ -1,0 +1,8 @@
+#!/bin/sh
+# 发布前脱敏检查 —— 命中即拒绝推送（这是唯一「不会忘」的检查点）。
+# 启用（每个克隆各做一次）：git config core.hooksPath scripts/hooks
+# 确认命中项无碍时：git push --no-verify
+python3 "$(git rev-parse --show-toplevel)/scripts/publish-check.py" || {
+  echo "✗ 脱敏检查未通过 —— 拒绝推送（真实标识换占位符；确认无碍可 --no-verify）" >&2
+  exit 1
+}

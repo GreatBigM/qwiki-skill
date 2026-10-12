@@ -88,9 +88,9 @@ qwiki-skill/
 ├── install.sh                       ← 一键安装脚本（多 agent 目标）
 ├── CHANGELOG.md                     ← 版本历史
 ├── SKILL.md                         ← 操作手册（九操作路由 + 详细步骤，仓库根即 skill）
-├── templates/                       ← index / history / card-module / card-design / card-issue / note-general 六模板
+├── templates/                       ← index / card-module / card-track / card-measurement / card-issue / card-design / note-general 七模板
 ├── references/                      ← agent-hook（hook 机制 + 三工具注册表）
-└── scripts/                         ← knowledge-sediment-lib.sh（归一化层）+ 四 hook 脚本
+└── scripts/                         ← qwiki-check.py（库自检）+ publish-check.py（发布前脱敏）+ 四 hook 脚本 + hooks/pre-push
 ```
 
 ## 设计理念
@@ -100,6 +100,17 @@ qwiki-skill/
 - **单目录部署**：无外部 skill 依赖，复制目录即用
 - **git 管理**：所有写操作自动 commit，历史可回溯
 - **纯文本**：Markdown 平铺，跨工具兼容
+
+## 发布前检查（脱敏）
+
+这个仓是公开的，`scripts/publish-check.py` 扫真实项目代号 / 内网 IP / MAC / 长 hash / 凭据 / 本机路径：
+
+```bash
+python3 scripts/publish-check.py          # 逐条判定，真实标识换 <项目A> / <IP> 占位符
+git config core.hooksPath scripts/hooks   # 启用 pre-push 钩子（每个克隆各做一次）→ 命中即拒绝推送
+```
+
+**为什么是钩子而不是"记得手动跑"**：脱敏靠人记必然回潮——同一批标识在 v1.7.6 脱敏过一轮，之后三个版本又各自写回去。最隐蔽的泄漏面是模板里的「好坏例」：举例越真实越像好例。
 
 ## License
 

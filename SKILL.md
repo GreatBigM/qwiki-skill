@@ -1,7 +1,7 @@
 ---
 name: qwiki
 description: 个人知识库管理：卡片索引、知识沉淀、自动检索，AI 替你积累项目经验。
-version: 2.10.0
+version: 2.11.0
 author: GreatBigM
 license: MIT
 category: knowledge
@@ -304,6 +304,7 @@ INDEX 条目数、已入驻项目、知识文件数。
 - init 模板（建库）：`templates/index.md`
 - 卡片模板（生成卡，先定角色再选骨架）：`templates/card-module.md`（聚合·模块卡）、`templates/card-track.md`（聚合·轨迹卡）、`templates/card-measurement.md`（事件·实测卡）、`templates/card-issue.md`（事件·问题说明卡）、`templates/card-design.md`（按需·设计说明卡）、`templates/note-general.md`（个人·随笔卡）
 - **自检脚本**：`scripts/qwiki-check.py`（SCHEMA/SKILL 各项约定的可执行版；只读、仅需 python3 标准库，PyYAML 可选）
+- **发布前脱敏检查**（发布本仓时用，不是知识库操作）：`scripts/publish-check.py`（扫真实项目代号 / 内网 IP / MAC / 长 hash / 凭据 / 本机路径）+ `scripts/hooks/pre-push`（`git config core.hooksPath scripts/hooks` 启用，命中即拒绝推送）
 - hook 脚本（自发生长事件驱动，四 hook 工具兼容 + pi 扩展）：`scripts/knowledge-sediment-lib.sh`（归一化层）+ `scripts/knowledge-sediment-hint.sh`、`scripts/knowledge-sediment-toolcheck.sh`、`scripts/knowledge-sediment-inject.sh`、`scripts/knowledge-sediment-subagent.sh`（ZCode 无 SubagentStop，不注册该项）；pi 适配见 `~/.pi/agent/extensions/qwiki-sediment.ts`（无 hook，事件映射同协议）
 - 参考：`references/agent-hook.md`（hook 机制说明 + 三工具注册表）
 - 版本记录：`CHANGELOG.md`（随安装拷贝，记录版本历史）

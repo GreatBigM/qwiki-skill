@@ -79,12 +79,12 @@ YAML 头适用于**卡片与知识文档**：`personal/` 下的 note、`projects
 ```yaml
 ---
 title: <标题>                  # 必填：与正文 H1 一致
-type: note|card|reference|design|change   # 必填：文档类型
+type: note|card                 # 必填：文档类型（v2.11.0 收窄，原 reference/design/change 是素材用的，素材不再带头后取消）
 date: <YYYY-MM-DD>             # 必填：创建日期
 summary: <一句话总结>           # 与正文 H1 后 `>` 引言行同串（真相源）；INDEX 行同取此串
 tags: [<标签>]                 # 推荐：检索用
 author: <作者>                 # 可选
-version: <版本>                # 可选：change/design 用
+version: <版本>                # 可选：文档自身带版本时用
 status: draft|review|accepted|archived    # 可选：状态
 related: [<相对路径>]          # 可选：相关文档
 ---

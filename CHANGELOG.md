@@ -1,4 +1,28 @@
 # Changelog
+## 2.11.0 (2026-10-12)
+
+### Added
+
+- **`scripts/publish-check.py` + `scripts/hooks/pre-push` —— 发布前脱敏检查，从"记得手动跑"改成"推送时自动拦"**。起因是脱敏**反复回潮**：同一批内部标识在 v1.7.6 专门脱敏过一轮，之后 v2.6.2 / v2.7.3 / v2.8.4 又各写回去——因为写文档时顺手就用真实名字举例，靠人记没有任何拦得住的地方。规则三条：
+  1. 真实项目代号（`hm####` / `bw###` / `up##`）
+  2. 内网 IP（10/8、192.168/16、172.16/12）、MAC、长 hash、凭据赋值、私钥块
+  3. 本机路径（家目录 `/home/<user>/`、内网代码树挂载点）
+  - **最隐蔽的泄漏面是模板里的「好坏例」**——举例越真实越像好例（曾把真实设备 IP / 固件 hash / AP 品牌型号写进测量口径的"好例"）
+  - 带 `--self-test`（种 9 个必中样本 + 6 个必不中样本，覆盖 `setup12`/`backup07` 这类假阳性、文档保留段、占位符形态）——**自检当场抓出一个真缺陷**：初版把一条 QEMU 默认私有 IP（10.0.2 段）当文档保留段放进"必不中"，实际它就该报
+  - 启用：`git config core.hooksPath scripts/hooks`（版本化钩子文件，不靠 `.git/hooks` 本地残留传播）
+
+### Changed
+
+- **`type` 取值收窄为 `note|card`**（原 `note|card|reference|design|change`）。`reference` / `design` / `change` 本是给素材用的类型，v2.10.0 素材不再带头后这三个值全库零使用——收窄，顺带把 `version:` 字段的注释从「change/design 用」改为「文档自身带版本时用」
+
+### Fixed
+
+- `README.md` 仓库结构栏与实况不符：templates 漏了 `card-track` / `card-measurement`、多写了不存在的 `history`；scripts 栏未含自检与脱敏脚本
+
+### 附带
+
+- 版本 2.10.0 → 2.11.0
+
 ## 2.10.0 (2026-10-12)
 
 ### Changed
