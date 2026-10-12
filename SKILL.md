@@ -1,7 +1,7 @@
 ---
 name: qwiki
 description: 个人知识库管理：卡片索引、知识沉淀、自动检索，AI 替你积累项目经验。
-version: 2.5.3
+version: 2.6.0
 author: GreatBigM
 license: MIT
 category: knowledge
@@ -121,7 +121,7 @@ AI:  执行操作 → 回报结果
 
 ### 步骤
 
-1. **现状检查**（先诊断后行动）：`ls <代码路径>/` — 已有项目知识卡 → 进入「补充」模式：diff 检查是否过时，按 `templates/card.md` 补齐缺失章节
+1. **现状检查**（先诊断后行动）：`ls <代码路径>/` — 已有项目知识卡 → 进入「补充」模式：diff 检查是否过时，按 `templates/card-module.md` 补齐缺失章节
 2. **四轮阅读 SDK**（上表；编译入口按置信度分级：用户提供 > CI 配置 > 构建足迹 > 静态推导标注待验证）
 3. **项目卡初版**：工程划分用多信号源交叉，编译相关章节标注"静态推导，待验证"
 4. `mkdir -p ~/qwiki/projects/<项目名>/`
@@ -136,7 +136,7 @@ AI:  执行操作 → 回报结果
 
 1. **来源盘点**：确认来源形态与规模（旧库目录 / 项目 references|design|archive / 笔记目录 / 导出文件），对照 INDEX 现有登记防重复
 2. **核心知识识别**：高频/知识最丰富者优先，一次 1-3 个模块
-3. **蒸馏建卡**（`templates/card.md` 八段模板 / `templates/note.md`）：
+3. **蒸馏建卡**（按形态选模板：模块卡 `templates/card-module.md` / 设计说明卡 `templates/card-design.md` / 问题说明卡 `templates/card-issue.md` / 随笔卡 `templates/note-general.md`）：
    - 模块边界：search_files 确认文件清单
    - 素材：memory + 来源文档 + 代码验证
    - 卡片是「导航 + 核心事实」，细节指向来源/现有 references（相关卡片段），不搬运全文
@@ -169,10 +169,14 @@ AI:  执行操作 → 回报结果
    - 与代码/实测矛盾的卡 → 修正内容
    - 完全不符合现实的卡 → 提出销毁建议（确认后删）
    - 孤岛（零入链）→ 标记冷门保留，不销毁
-3. **结构审视（主动防腐化，2026-08-04 定稿）**：
+3. **表达形态体检**（按 skill 根目录 `SCHEMA.md` §表达形态）——作用域：**设计说明 / 问题说明形态的卡（按正文结构判定）＋ 本次新写入的卡**；存量模块卡、随笔卡不报，避免误报刷屏：
+   - 该给图（结构分层 / 跨 ≥2 组件 / ≥3 步流转 / 含时序竞态）却纯文字 → 报
+   - 图内节点、伪代码关键行无真实符号名或 `file:line` → 报
+   - 仅复述文字的装饰图 → 报
+4. **结构审视（主动防腐化，2026-08-04 定稿）**：
    - 归属调整：放错库/放错层级的卡归位（personal ↔ projects、项目 ↔ common）——跨库移动只在归属错误时发生，非形态演进（note/card 是两个库，无演进）
    - 发现即处理，与检测驱动防腐化互补
-4. `cd ~/qwiki && git add -A && git commit -m "sync $(date +%Y%m%d)"`（有变更时）
+5. `cd ~/qwiki && git add -A && git commit -m "sync $(date +%Y%m%d)"`（有变更时）
 
 ---
 
@@ -194,7 +198,7 @@ AI:  执行操作 → 回报结果
 
 ## note — 随手笔记（随笔卡）
 
-`qwiki note <标题>` → 按 `templates/note.md` 创建 `~/qwiki/personal/<slug>.md` → INDEX 加一行。
+`qwiki note <标题>` → 按 `templates/note-general.md` 创建 `~/qwiki/personal/<slug>.md` → INDEX 加一行。
 
 - **自动判断模式（自发生长）**：三触发源出现时 AI 直接建卡/更新，不等用户命令——
   ① 验证结论产生（实测/分析出结论）② 重复实践未命中知识点（查 INDEX 无对应卡且实践再现）③ 代码修改后对应卡需更新
@@ -207,7 +211,7 @@ AI:  执行操作 → 回报结果
 - YAML 头按公约：title/type/date 必填 + summary 真相源 + tags
 - 相关段用 `[[slug]]` 双链（文档级链接，见 skill 根目录 `SCHEMA.md` §知识互联）
 - 正文段落为参考骨架（背景/要点/结论），按需取舍，**不强制 schema**——写什么算什么，后续可随时补充
-- 卡片身份：note 是随笔卡（personal/ 库，个人来源），card 是模块卡（projects/ 库，项目来源）——两个库、归属由来源决定，**无形态演进**；跨库归位（归属错误时）由 sync 结构审视处理
+- 卡片身份：note 是随笔卡（personal/ 库，个人来源），card 是项目卡（projects/ 库，项目来源，模块 / 设计说明 / 问题说明三形态）——两个库、归属由来源决定，**无形态演进**；跨库归位（归属错误时）由 sync 结构审视处理
 - 和 import 的区别：note 无项目目录，一条 INDEX 行 + 一个 .md
 - 写完后 `cd ~/qwiki && git add -A && git commit -m "note: <标题>"`
 
@@ -244,15 +248,22 @@ INDEX 条目数、已入驻项目、知识文件数。
 
 ---
 
-## 知识文件模板（八段）
+## 知识文件模板（卡片形态）
 
-模块边界 / 职责描述 / 架构设计 / 技术栈 / 代码规范 / 配置命令 / 模块间关系 / 相关
+按形态选模板——**形态之别在模板，不在 `type` 值**（三形态 card 的 `type` 一律是 `card`）：
 
-> 卡片公共约定（见 skill 根目录 `SCHEMA.md` §卡片身份）：YAML 头（title/type/date 必填 + summary 真相源）+ 一句话总结 + `[[slug]]` 双链 + 相关段。card=模块卡（projects/ 库，八段），note=随笔卡（personal/ 库，自由正文）——两个库，归属由来源决定，无形态演进。
+| 形态 | 模板 | type |
+|------|------|------|
+| 模块卡（八段：模块边界 / 职责描述 / 架构设计 / 技术栈 / 代码规范 / 配置命令 / 模块间关系 / 相关） | `templates/card-module.md` | card |
+| 设计说明卡（设计目标 / 结构图 / 流向图 / 关键设计决策 / 时序图 / 相关） | `templates/card-design.md` | card |
+| 问题说明卡（现象 / 根因 / 正常流 vs 出错流 / 修复 / 验证 / 复用手势 / 相关） | `templates/card-issue.md` | card |
+| 随笔卡（背景 / 要点 / 结论，自由取舍） | `templates/note-general.md` | note |
+
+> 卡片公共约定与形态判据见 skill 根目录 `SCHEMA.md` §卡片身份、§表达形态——本文件不复述。
 
 ## 架构文档
 
-- **SCHEMA.md**（本 skill 根目录）= **做成什么样**：知识库宪法（目录结构/命名/纯度/卡片公约：YAML 头、卡片身份、知识互联）——目标态定义，**唯一真相源在本 skill**（随 skill 发布/安装），知识库内不放置实例
+- **SCHEMA.md**（本 skill 根目录）= **做成什么样**：知识库宪法（目录结构/命名/纯度/卡片公约：YAML 头、卡片身份、表达形态、知识互联）——目标态定义，**唯一真相源在本 skill**（随 skill 发布/安装），知识库内不放置实例
 - **本 SKILL.md** = **怎么做**：九操作流程——实现 SCHEMA 目标态的方法
 - 平级关系（2026-08-01 定稿）：SKILL 的每个操作都在实现 SCHEMA 定义的目标态（init 按蓝图建库、note 按卡片公约生成、import 按目录结构入驻），两者互补不重叠
 
@@ -274,7 +285,7 @@ INDEX 条目数、已入驻项目、知识文件数。
 
 - 宪法（与 SKILL.md 平级，唯一真相源）：`SCHEMA.md`（随安装拷贝）
 - init 模板（建库）：`templates/index.md`、`templates/history.md`
-- 卡片模板（生成卡）：`templates/card.md`、`templates/note.md`
+- 卡片模板（生成卡，按形态选）：`templates/card-module.md`（模块卡）、`templates/card-design.md`（设计说明卡）、`templates/card-issue.md`（问题说明卡）、`templates/note-general.md`（随笔卡）
 - hook 脚本（自发生长事件驱动，四 hook 工具兼容 + pi 扩展）：`scripts/knowledge-sediment-lib.sh`（归一化层）+ `scripts/knowledge-sediment-hint.sh`、`scripts/knowledge-sediment-toolcheck.sh`、`scripts/knowledge-sediment-inject.sh`、`scripts/knowledge-sediment-subagent.sh`（ZCode 无 SubagentStop，不注册该项）；pi 适配见 `~/.pi/agent/extensions/qwiki-sediment.ts`（无 hook，事件映射同协议）
 - 参考：`references/agent-hook.md`（hook 机制说明 + 三工具注册表）
 - 版本记录：`CHANGELOG.md`（随安装拷贝，记录版本历史）
