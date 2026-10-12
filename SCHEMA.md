@@ -25,6 +25,7 @@
 ## INDEX 登记规则
 
 - 新写入知识**必须**同步追加 INDEX 条目（检索链依赖 INDEX 命中，漏登记=检索不到）
+- **INDEX 的「总结」列是检索用压缩摘要**（目标 ≤60 汉字），与卡片 YAML `summary` 是**两份东西、不要求相等**——YAML summary 是卡片自身总结，INDEX 行是给「扫表定位」用的更短版本
 - 旧 v2 文档按「自然淘汰」：日志/单次分析类不登记，核心模式/基线/调试文档登记
 - 每会话写 qwiki ≤ 5 页
 
@@ -57,14 +58,14 @@
 
 ## YAML 头公约（v1）
 
-所有知识库文档（`projects/**/` 与 `personal/` 下的 .md）统一 YAML 头。排除：INDEX.md/HISTORY.md（索引与档案文件）、templates/（模板本身）、projects/<项目>/spec.md（workbench 项目规格，另立规矩）。
+YAML 头适用于**卡片与知识文档**：`personal/` 下的 note、`projects/<项目>/` 下的卡片、`projects/common/` 下的卡。排除：INDEX.md/HISTORY.md（索引与档案文件）、templates/（模板本身）、`projects/<项目>/spec.md`（workbench 项目规格，另立规矩），以及 `references/`|`design/`|`change/` 下的**素材文档**——§卡片身份 已定义它们是「卡片的素材来源，不是卡片」，不强制 YAML 头。
 
 ```yaml
 ---
 title: <标题>                  # 必填：与正文 H1 一致
 type: note|card|reference|design|change   # 必填：文档类型
 date: <YYYY-MM-DD>             # 必填：创建日期
-summary: <一句话总结>           # 推荐：INDEX 登记/explore 检索直接提取
+summary: <一句话总结>           # 推荐：卡片自身总结（INDEX 行另写压缩摘要，见 §INDEX 登记规则）
 tags: [<标签>]                 # 推荐：检索用
 author: <作者>                 # 可选
 version: <版本>                # 可选：change/design 用
