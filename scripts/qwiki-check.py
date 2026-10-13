@@ -232,6 +232,23 @@ def check_track_ownership(root, cards, rows):
     return f"轨迹卡归属（{len(tracks)} 张）", not bad, bad
 
 
+def check_material_no_header(root, cards, rows):
+    """素材与脚本不得带 YAML 头 —— 不变量「有头 ⇔ 是卡片」（SCHEMA §YAML 头公约 v2.10.0）。"""
+    bad = []
+    for base in ("personal", "projects"):
+        for dp, dn, fn in os.walk(os.path.join(root, base)):
+            dn[:] = [d for d in dn if d != ".git"]
+            if not ({"resource", "scripts"} & set(dp.split(os.sep))):
+                continue
+            for f in fn:
+                if not f.endswith(".md"):
+                    continue
+                if split(open(os.path.join(dp, f), encoding="utf-8").read())[0] is not None:
+                    bad.append(f"{os.path.relpath(os.path.join(dp, f), root)}: 素材/脚本带 YAML 头"
+                               "（有头 ⇔ 卡片：删头，或升格为卡）")
+    return "素材/脚本不得带头", not bad, bad
+
+
 def check_yaml(root, cards, rows):
     """YAML 头可解析（需 PyYAML；缺库则跳过）。"""
     try:
@@ -264,6 +281,7 @@ CHECKS = [
     check_material_paths,
     check_naming,
     check_track_ownership,
+    check_material_no_header,
     check_yaml,
 ]
 
