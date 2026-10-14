@@ -30,7 +30,7 @@
   - 空/非匹配 JSON → 静默
   - **注意**：Codex `UserPromptSubmit` 不处理 hook 输出（静默忽略，inject.sh 对该工具不输出）；ZCode 不支持 `SubagentStop` 事件
 
-## 注册（三工具注册表，2026-08-02 跨工具落地）
+## 注册（四家注册表 + pi 扩展；2026-08-02 落地，08-18 增 ZCode）
 
 > 同一套脚本（`scripts/knowledge-sediment-*.sh`），多种注册方式。payload 差异由 `knowledge-sediment-lib.sh` 归一化（事件名/字段映射），工具判定与输出协议由 `sediment_detect_tool` 承担（注册命令第 1 参为工具名，如 `bash <script> zcode`），脚本本身工具无关。
 

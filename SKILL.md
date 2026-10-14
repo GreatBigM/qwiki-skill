@@ -315,5 +315,5 @@ INDEX 条目数、已入驻项目、知识文件数。
 - **自检脚本**：`scripts/qwiki-check.py`（SCHEMA/SKILL 各项约定的可执行版；只读、仅需 python3 标准库，PyYAML 可选）
 - **发布前脱敏检查**（发布本仓时用，不是知识库操作）：`scripts/publish-check.py`（扫真实项目代号 / 内网 IP / MAC / 长 hash / 凭据 / 本机路径）+ `scripts/hooks/pre-push`（`git config core.hooksPath scripts/hooks` 启用，命中即拒绝推送）
 - hook 脚本（自发生长事件驱动，四 hook 工具兼容 + pi 扩展）：`scripts/knowledge-sediment-lib.sh`（归一化层）+ `scripts/knowledge-sediment-hint.sh`、`scripts/knowledge-sediment-toolcheck.sh`、`scripts/knowledge-sediment-inject.sh`、`scripts/knowledge-sediment-subagent.sh`（ZCode 无 SubagentStop，不注册该项）；pi 适配见 `~/.pi/agent/extensions/qwiki-sediment.ts`（无 hook，事件映射同协议）
-- 参考：`references/agent-hook.md`（hook 机制说明 + 三工具注册表）
+- 参考：`references/agent-hook.md`（hook 机制说明 + 各家注册表）
 - 版本记录：`CHANGELOG.md`（随安装拷贝，记录版本历史）

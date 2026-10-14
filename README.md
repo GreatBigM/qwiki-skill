@@ -1,6 +1,6 @@
 # qwiki-skill
 
-AI 知识库管理技能（skill）—— 用九条命令管理你的二级知识库。
+AI 知识库管理技能（skill）—— 用九条命令管理你的跨工具知识库。
 
 qwiki 让 AI 助理拥有一个 git 管理的知识库：项目知识卡片 + 个人笔记 + 全局索引，按需加载、可检索、可沉淀。跨工具兼容（Hermes / Claude Code / Codex / ZCode / pi），仓库根目录即 skill 本体，用一键脚本或手动复制安装。
 
@@ -64,12 +64,12 @@ hermes skills install qwiki
 | git | 是 | 知识库版本管理 | 系统自带 |
 | python3 | 否 | hook 脚本（缺失时静默跳过，不阻塞主流程） | 系统自带 |
 
-零外部 skill 依赖——hook 机制说明已内嵌（references/agent-hook.md，含三工具注册表）。
+零外部 skill 依赖——hook 机制说明已内嵌（references/agent-hook.md，含各家注册表）。
 
 ## 快速上手
 
 ```bash
-qwiki init              # 初始化知识库（创建 ~/qwiki/ + INDEX.md + ROUTING.md）
+qwiki init              # 初始化知识库（创建 ~/qwiki/ 骨架 + INDEX.md）
 qwiki import <项目>     # 新项目入驻：AI 读 SDK → 建项目卡 → 登记 INDEX
 qwiki migrate <项目>    # 老知识升级为卡片体系
 qwiki note <标题>       # 随手笔记
@@ -89,7 +89,7 @@ qwiki-skill/
 ├── CHANGELOG.md                     ← 版本历史
 ├── SKILL.md                         ← 操作手册（九操作路由 + 详细步骤，仓库根即 skill）
 ├── templates/                       ← index / card-aggregate / card-track / card-measurement / card-issue / card-design / note-general 七模板
-├── references/                      ← agent-hook（hook 机制 + 三工具注册表）
+├── references/                      ← agent-hook（hook 机制 + 各家注册表：Hermes/Claude/Codex/ZCode，pi 走扩展）
 └── scripts/                         ← qwiki-check.py（库自检，11 项断言）+ publish-check.py（发布前脱敏）+ 四 hook 脚本 + hooks/pre-push
 ```
 
@@ -120,9 +120,9 @@ qwiki-skill/
 ## 设计理念
 
 - **检索链**：INDEX → 知识卡 → 沿双链走（上行到聚合卡看同类 / 直链找对偶卡 / 跨族边跨线），按需加载，不把整个知识库塞进上下文
-- **两维/三面**：存储（INDEX 平表挂全部卡，段头由路径推出）与组织（双链 + 聚合卡）正交——"项目树"只是归档分片，不构成层级
+- **三个面正交**：存档（目录管归属）／组织（双链 + 聚合卡）／检索（INDEX），信息不复制——「项目树」只是归档分片，不构成层级
 - **聚合卡按知识体量长出来**：小知识就是独立卡（散挂 INDEX 属正常）；一块知识**被拆着写**、且**写得出"整体的话 + 关于这批知识的话"**时才建聚合卡——只写得出"这里有几张卡"就是索引器形态，还不该建
-- **跨工具**：知识库本体与工具无关，hook 事件驱动层三工具同构（归一化层收敛 payload 差异）
+- **跨工具**：知识库本体与工具无关，hook 事件驱动层多工具同构（归一化层收敛 payload 差异）
 - **单目录部署**：无外部 skill 依赖，复制目录即用
 - **git 管理**：所有写操作自动 commit，历史可回溯
 - **纯文本**：Markdown 平铺，跨工具兼容
