@@ -19,3 +19,16 @@ python3 "$ROOT/scripts/number-audit.py" --parity || {
   echo "✗ 描述同步检查未通过 —— 拒绝推送（判据改了，SKILL.md / README.md 的描述没跟上）" >&2
   exit 1
 }
+
+# 改了技能本体就必须同时改 CHANGELOG（"改了实现忘了记录"这一形状已复发六次）
+BASE=$(git rev-parse --verify -q origin/main || git rev-parse --verify -q HEAD~1 || true)
+if [ -n "$BASE" ]; then
+  CHANGED=$(git diff --name-only "$BASE"..HEAD 2>/dev/null || true)
+  if printf '%s\n' "$CHANGED" | grep -qE '^(SKILL\.md|SCHEMA\.md|templates/|scripts/(qwiki-check|number-audit|publish-check)\.py)$|^(SKILL\.md|SCHEMA\.md|templates/|scripts/(qwiki-check|number-audit|publish-check)\.py)/'; then
+    printf '%s\n' "$CHANGED" | grep -q '^CHANGELOG\.md$' || {
+      echo "✗ 改了技能本体（SKILL.md / SCHEMA.md / templates/ / scripts 之一）但 CHANGELOG.md 没跟上" >&2
+      echo "  → 补一条本版本条目再推（同一形状已复发六次）" >&2
+      exit 1
+    }
+  fi
+fi
