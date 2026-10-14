@@ -16,12 +16,14 @@ python3 "$ROOT/scripts/number-audit.py" || {
 }
 
 # 改了技能本体就必须同时改 CHANGELOG（"改了实现忘了记录"这一形状已复发六次）
+# 名单 = 随安装下发、或改变用户拿到的东西：SKILL / SCHEMA / install.sh / templates / scripts / references。
+# README.md 有意不入列——它是对外首页，随 CHANGELOG 一起看即可，强制它只会制造噪声。
 BASE=$(git rev-parse --verify -q origin/main || git rev-parse --verify -q HEAD~1 || true)
 if [ -n "$BASE" ]; then
   CHANGED=$(git diff --name-only "$BASE"..HEAD 2>/dev/null || true)
-  if printf '%s\n' "$CHANGED" | grep -qE '^(SKILL\.md|SCHEMA\.md|templates/|scripts/|references/)'; then
+  if printf '%s\n' "$CHANGED" | grep -qE '^(SKILL\.md|SCHEMA\.md|install\.sh|templates/|scripts/|references/)'; then
     printf '%s\n' "$CHANGED" | grep -q '^CHANGELOG\.md$' || {
-      echo "✗ 改了技能本体（SKILL.md / SCHEMA.md / templates/ / scripts/ / references/ 之一）但 CHANGELOG.md 没跟上" >&2
+      echo "✗ 改了技能本体（SKILL.md / SCHEMA.md / install.sh / templates/ / scripts/ / references/ 之一）但 CHANGELOG.md 没跟上" >&2
       echo "  → 补一条本版本条目再推（同一形状已复发六次）" >&2
       exit 1
     }

@@ -1,53 +1,72 @@
 #!/usr/bin/env python3
 """qwiki 数字审计 —— 宪法与对外文档里不得出现**实测数字**。
 
-CURRENT: 宪法与对外文档（SCHEMA.md / README.md / SKILL.md）不得含实测数字 —— 本文件是模型与判据，不对具体实例负责；实例的账由实例回答（`qwiki-check.py` 的输出），设计论证用公式表达。模型常量（项 / 页 / 字符 / ≤N 跳 / 区间 / 公式变量）与操作返回（0 条 / 1 条）不计。
+CURRENT: 宪法与对外文档（SCHEMA.md / README.md / SKILL.md / templates/*.md）不得含实测数字 —— 它们是模型与判据，不对具体实例负责；实例的账由实例回答（`qwiki-check.py` 的输出），设计论证用公式表达。反引号内同样禁止（不是免检通道），历史叙述里复述旧值同样禁止。不计：模型常量（项 / 页 / 字符 / ≤N 跳 / 区间 / 公式变量）与操作返回（0 条 / 1 条）；排除：CHANGELOG.md（按日期留痕的记录，数字本属正当）。
 
 用法:
     python3 number-audit.py [仓库根]      # 默认 = 本脚本上一级
-    python3 number-audit.py --self-test   # 逐数字比对的正反样本
+    python3 number-audit.py --self-test   # 逐数字比对的正反样本（按缺陷类别组织）
 退出码: 0 = 全部合规；1 = 有裸数字
 
-**为什么改判据（2026-10-14，v2.12.3）**：旧判据是「实测数字必须带口径 + 日期」，连立三轮规则、
-还配了机器闸门（含语义核指纹 / --seal 重签 / --parity 描述同步），**仍实测出"同一天内 190→191"的错值**
-——因为闸门只能验"有没有标注"，验不了"数字是否仍然为真"。根因不是标注缺失，是**实例的账记在了宪法里**：
+**为什么改判据（2026-10-14，v2.12.3）**：旧判据是「实测数字必须带口径 + 日期」，连立数轮规则、
+还配了机器闸门（含语义核指纹 / --seal 重签 / --parity 描述同步），**仍实测出"同一天内同一规模两个值"**——
+因为闸门只能验"有没有标注"，验不了"数字是否仍然为真"。根因不是标注缺失，是**实例的账记在了宪法里**：
 SCHEMA 是抽象模型，"当前库有多少卡"本就不该由它负责。⇒ 判据换成职责边界：**样本出库**。
-（旧机制一并退役：语义核指纹只能证明"改过并已显式重签"，不能证明"描述写对了"；判据收成一句话后，
-描述同步的义务本身就不存在了。）
 
 判定（确定性，不做邻近度近似）:
-    扫描 SCHEMA.md / README.md / SKILL.md 的**非代码围栏**行，去掉行内代码后找「数字 + 计数单位」。
+    扫 SCHEMA.md / README.md / SKILL.md / templates/*.md 的**非代码围栏**行，找「数字 + 计数单位」。
     命中即违规，除非属下列模型常量：
-      ① 有边界限定词：紧邻前置 `≥ ≤ < > 至少 最多 最少 至多 约 超过`，或区间 `1-3 个`
-      ② 单位是模型自身的量：`项` / `页` / `字符` / `次/时`（如 `11 项断言` / `5 页` / `≤80 字符`）
+      ① 有边界限定词：紧邻前置 `≥ ≤ < > 至少 最多 最少 至多`，或区间 `1-3 个`
+         （`约` / `超过` **不算**——那是把样本糊化，不是模型常量）
+      ② 单位是模型自身的量：`项` / `页` / `字符` / `次/时`
       ③ 操作 / 查询返回：`0 条` / `1 条`（有无判断，不是测量）
-    由**单位表**排除标识符：`310 线` / `3.10 卡` / `v2.10.0` 这类不是数量（它们没有计数单位）。
+
+已知边界（有意，不是缺陷）:
+    · **代码围栏（```）内不扫**：那里是 shell / 配置举例，数字多为外部平台常量（如 API 限流速率）。
+      代价：样本可以藏进围栏——接受，因为围栏是"贴出来的代码"，不是论述。
+    · **反引号内**（单个 `）**照扫**：实测过「规模 `190 张卡`」零成本绕过旧版，故不是免检通道。
+    · **中文数字抓不到**（`三轮` / `七成` / `九成` 里的数字不是阿拉伯数字）：把样本糊成中文数字即绕过。
+      这是闸门已知盲区——堵它得把中文数词也建模，代价远大于收益（而且模糊措辞本来就是合法中文）。
+      约束交回规则本身：宪法里不许有实例样本，**写的时候**就别写，别指望闸门。
+    · **无单位数字**（`190→191` 之外的版本号、线号）由单位表天然排除；版本号 / 线号本就该排除，
+      而**历史叙述里复述旧值**另有 `N→M` 一条兜底。
 """
+import glob
 import os
 import re
 import sys
 
 SCAN = ["SCHEMA.md", "README.md", "SKILL.md"]
+SCAN_GLOB = ["templates/*.md"]
 
-# 实测数字：整数 + 计数单位，或 占比 / 倍数（允许小数），或 N/M（两侧各 ≥2 位）
-# 前置负向断言排除 `−`（U+2212 减号，如 `n−1 张` 是公式不是数量）
+# 实测数字：整数 + 计数单位（含时间 / 体积 / 轮次），或 占比 / 倍数，或 N/M，或 N→M 转移
 NUM = re.compile(
-    r"(?<![\w.−])\d+\s*(?:张|条|行|处|跳|个|次|位|对|卡|倍)"
+    r"(?<![\w.−])\d+\s*(?:张|条|行|处|跳|个|次|位|对|卡|倍|轮|份|度|字节|分钟|小时)"
+    r"|(?<![\w.−])\d+\s*(?:ms|s|MB|KB|GB|us|ns)(?![\w])"
     r"|(?<![\w.−])\d+(?:\.\d+)?\s*(?:%|×)"
     r"|(?<![\w.−])\d{2,}\s*/\s*\d{2,}"
+    r"|(?<![\w.−])\d+\s*→\s*\d+"
 )
-QUAL = re.compile(r"(?:≥|≤|<|>|至少|最多|最少|至多|约|超过)[^，。；]{0,6}$|[-–]\s*$")
+# 模型常量：边界限定（`约` / `超过` 不在列——它们是把样本糊化的措辞）
+QUAL = re.compile(r"(?:≥|≤|<|>|至少|最多|最少|至多)[^，。；]{0,6}$|[-–]\s*$")
 STRUCT_UNITS = ("项", "页", "字符")
 
 
+def scan_files(root):
+    out = list(SCAN)
+    for pat in SCAN_GLOB:
+        out += sorted(os.path.relpath(p, root) for p in glob.glob(os.path.join(root, pat)))
+    return out
+
+
 def mask_code(text):
-    """→ (行列表, 每行是否在代码围栏内)。"""
+    """→ (行列表, 每行是否在代码围栏内)。逐行对齐，行号 = 真实行号。"""
     raw, code, in_code = [], [], False
     for ln in text.split("\n"):
         fence = ln.lstrip().startswith("```")
         if fence:
             in_code = not in_code
-        raw.append(ln)                            # 逐行对齐，行号 = 真实行号
+        raw.append(ln)
         code.append(in_code or fence)
     return raw, code
 
@@ -67,7 +86,7 @@ def model_constant(m, line):
 
 def audit(root):
     bad = []
-    for name in SCAN:
+    for name in scan_files(root):
         path = os.path.join(root, name)
         if not os.path.exists(path):
             continue
@@ -75,34 +94,44 @@ def audit(root):
         for i, ln in enumerate(raw):
             if code[i]:
                 continue
-            line = re.sub(r"`[^`]*`", "", ln)    # 行内代码不算
-            for m in NUM.finditer(line):
-                if model_constant(m, line) is None:
+            for m in NUM.finditer(ln):            # 整行扫描：反引号内不豁免
+                if model_constant(m, ln) is None:
                     bad.append((name, i + 1, m.group(0).strip(), ln.strip()[:70]))
     return bad
 
 
+# 样本按**缺陷类别**组织（不是按实现顺手写）：每条对应一个已知会漏的方向 + 一条正向控制
 SELF_TEST = [
-    # 违规
-    ("| 卡 | 61 张同属这条线 |\n", {"61 张"}, "带单位实测数字"),
-    ("全库 190 卡\n", {"190 卡"}, "带单位实测数字（全库规模）"),
-    ("同族两卡 93% 靠中转\n", {"93%"}, "占比"),
-    ("省 30×\n", {"30×"}, "倍数"),
-    ("回链 95/95 全绿\n", {"95/95"}, "两位 N/M"),
-    ("| 表格里的 45 个数字 |\n", {"45 个"}, "表格单元格（无口径可依，同样违规）"),
-    ("- 某段 86 张卡\n", {"86 张"}, "列表项里的样本"),
-    # 放行
-    ("- 结构分层 / 跨 ≥2 组件 / ≥3 步流转 → 必给图\n", set(), "边界限定词（≥）"),
-    ("- 每张轨迹卡至少 1 张聚合卡\n", set(), "边界限定词（至少）"),
-    ("- 一次 1-3 个模块\n", set(), "区间"),
-    ("- 共 11 项断言，每会话 ≤5 页\n", set(), "模型自身的量（项 / 页）"),
-    ("- 匿名 API 限流 60 次/时 → 5000 次/时\n", set(), "外部平台常量（次/时）"),
-    ("- 窗口内 0 条 delegate_task 判为陈旧标记\n", set(), "操作 / 查询返回"),
-    ("- 直链 n(n−1) 行 vs 聚合 2n 行 ⇒ 比值 ≈ n/2\n", set(), "公式变量（无计数单位）"),
-    ("- 版本前缀 v2.10.0 与线名 310 线 / 3.10 卡 不是数量\n", set(), "标识符（线号 / 版本号）"),
-    ("```\n全库 190 卡\n```\n", set(), "代码围栏内不扫"),
-    ("- 行内 `95/95` 不算\n", set(), "行内代码不算"),
-    ("- 每张卡列其余 n−1 张 = n(n−1) 行\n", set(), "公式变量（n−1 张 里的减号）"),
+    # ── 正样本：必须报 ──
+    ("SCHEMA.md", "| 卡 | 61 张同属这条线 |\n", {"61 张"}, "带单位实测数字"),
+    ("SCHEMA.md", "全库 190 卡\n", {"190 卡"}, "带单位实测数字（全库规模）"),
+    ("SCHEMA.md", "同族两卡 93% 靠中转\n", {"93%"}, "占比"),
+    ("SCHEMA.md", "省 30×\n", {"30×"}, "倍数"),
+    ("SCHEMA.md", "回链 95/95 全绿\n", {"95/95"}, "两位 N/M"),
+    ("SCHEMA.md", "| 表格里的 45 个数字 |\n", {"45 个"}, "表格单元格"),
+    ("SCHEMA.md", "- 本库约有 190 张卡\n", {"190 张"}, "★ 类别：约 不算模型常量（糊化旁路）"),
+    ("SCHEMA.md", "- 全库超过 60 张卡\n", {"60 张"}, "★ 类别：超过 不算模型常量（糊化旁路）"),
+    ("SCHEMA.md", "- 旧规则连立 3 轮评审，吐了 2 份报告\n", {"3 轮", "2 份"},
+     "★ 类别：轮 / 份 / 度 未进单位表"),
+    ("SCHEMA.md", "- 冷启动 300s，重传 1500ms\n", {"300s", "1500ms"}, "★ 类别：时间单位未进单位表"),
+    ("SCHEMA.md", "- 镜像 40MB，日志 12KB\n", {"40MB", "12KB"}, "★ 类别：体积单位未进单位表"),
+    ("SCHEMA.md", "- 当前规模 `190 张卡`，`2080 对`\n", {"190 张", "2080 对"},
+     "★ 类别：反引号内不是免检通道"),
+    ("SCHEMA.md", "- 旧值 190→191 已经失真\n", {"190→191"}, "★ 类别：历史叙述里复述旧值"),
+    ("templates/card-x.md", "- 本库实测：80% 的卡片缺口径\n", {"80%"},
+     "★ 类别：模板（随安装下发的对外件）也在扫描面内"),
+    # ── 反样本：必须放行 ──
+    ("SCHEMA.md", "- 结构分层 / 跨 ≥2 组件 / ≥3 步流转 → 必给图\n", set(), "边界限定词（≥）"),
+    ("SCHEMA.md", "- 每张轨迹卡至少 1 张聚合卡\n", set(), "边界限定词（至少）"),
+    ("SCHEMA.md", "- 一次 1-3 个模块\n", set(), "区间"),
+    ("SCHEMA.md", "- 共 11 项断言，每会话 ≤5 页\n", set(), "模型自身的量（项 / 页）"),
+    ("SCHEMA.md", "- 匿名 API 限流 60 次/时 → 5000 次/时\n", set(), "外部平台常量（次/时）"),
+    ("SCHEMA.md", "- 窗口内 0 条 delegate_task 判为陈旧标记\n", set(), "操作 / 查询返回"),
+    ("SCHEMA.md", "- 直链 n(n−1) 行 vs 聚合 2n 行 ⇒ 比值 ≈ n/2\n", set(), "公式变量（无计数单位）"),
+    ("SCHEMA.md", "- 每张卡列其余 n−1 张 = n(n−1) 行\n", set(), "正向控制：公式里的减号不进匹配"),
+    ("SCHEMA.md", "- 版本前缀 v2.10.0 与线名 310 线 / 3.10 卡 不是数量\n", set(), "标识符（线号 / 版本号）"),
+    ("SCHEMA.md", "```\n全库 190 卡\n```\n", set(), "正向控制：代码围栏内不扫（有意边界）"),
+    ("CHANGELOG.md", "## 2.12.3\n- 8 处样本 5 处已失真\n", set(), "正向控制：CHANGELOG 不入扫描面"),
 ]
 NUMSTR = re.compile(r"「([^」]+)」")
 
@@ -110,9 +139,11 @@ NUMSTR = re.compile(r"「([^」]+)」")
 def self_test():
     import tempfile
     fail = 0
-    for text, expect, why in SELF_TEST:
+    for name, text, expect, why in SELF_TEST:
         with tempfile.TemporaryDirectory() as d:
-            open(os.path.join(d, "SCHEMA.md"), "w", encoding="utf-8").write(text)
+            p = os.path.join(d, name)
+            os.makedirs(os.path.dirname(p), exist_ok=True)
+            open(p, "w", encoding="utf-8").write(text)
             got = {t for _, _, t, _ in audit(d)}
         ok = got == expect
         print(f"  {'✓' if ok else '✗'} {why}：报出 {sorted(got) or '（无）'}"
@@ -128,7 +159,7 @@ def main(argv):
     root = os.path.expanduser(argv[0]) if argv and not argv[0].startswith("-") \
         else os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     bad = audit(root)
-    print(f"数字审计：{root}")
+    print(f"数字审计：{root}（扫描面：{' / '.join(scan_files(root))}）")
     for name, ln, tok, ctx in bad:
         print(f"  ✗ {name}:{ln} 实测数字「{tok}」—— {ctx}")
     if bad:

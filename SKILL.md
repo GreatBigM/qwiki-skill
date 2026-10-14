@@ -177,7 +177,7 @@ AI:  执行操作 → 回报结果
    - **素材误登 INDEX**（表内出现 `resource/`｜`scripts/` 等素材/脚本路径，或旧名 `references/`｜`design/`）→ 删行（库内变更查 git 历史，不另立档案文件）
    - **素材带头**（`resource/`｜`scripts/` 下的 `.md` 带 YAML 头）→ 删头（不变量：有头 ⇔ 是卡片）；若该文件本已是知识形态（机制梳理 / 方案 / 审查结论），走**升格为卡**——移位到项目根、补 `type: card` 头与 `> 依据`、登记 INDEX，并顺手修掉升格后暴露的 `[[...]]` 死链
    - **双链死链检测**：扫描全库 `[[...]]` 目标，对照**卡片表**（slug/项目-slug），报告悬空链接；另报「卡片里 `[[...]]` 指向素材」的口径错误（素材只做路径引用，见 skill 根目录 `SCHEMA.md` §知识互联）
-2. **防腐化判定**（按 skill 根目录 `SCHEMA.md` §卡片身份 活知识原则与防腐化判定标准，**按容器分轨**）：
+2. **防腐化判定**（按 skill 根目录 `SCHEMA.md` §卡片身份 活知识原则与防腐化判定标准）：
    - 死链清单 → 修正引用
    - **追加还是覆盖看内容，不看卡种**（SCHEMA §活知识原则）：当下状态（聚合卡现状 / 机制梳理）→ **直接修正**；被推翻的是**"已发出的结论"**（裁决 / 实测读数 / 已被引用的判断）→ **追加修正标注**（轨迹卡走 §H，其它卡追加 `⚠️ 修正` 块），**不静默抹掉、不销毁**
    - 聚合卡改完只剩当前态，"因为什么决策、改掉哪条、哪条因此过期"记在**该线轨迹卡 §H**——旧结论不得静默删除（该线还没有轨迹卡 ⇒ 这次的"消失的知识"就是建卡的负空间信号）；整卡不可救 → 先留修正标注，再提出销毁建议（确认后删）
@@ -312,7 +312,7 @@ INDEX 条目数、已入驻项目、知识文件数。
 - init 模板（建库）：`templates/index.md`
 - 卡片模板（生成卡：**先定用途**；聚合卡 / 独立卡由内容推导）：`templates/card-aggregate.md`（聚合卡）、`templates/card-track.md`（独立·轨迹卡）、`templates/card-measurement.md`（独立·实测卡）、`templates/card-issue.md`（独立·问题说明卡）、`templates/card-design.md`（独立·设计说明卡）、`templates/note-general.md`（独立·随笔卡）；审查卡与机制·手册类走自由骨架（无模板）
 - **自检脚本**：`scripts/qwiki-check.py`（SCHEMA/SKILL 各项约定的可执行版；只读、仅需 python3 标准库，PyYAML 可选）
-- **发布前检查**（发布本仓时用，不是知识库操作）：`scripts/publish-check.py`（扫真实项目代号 / 内网 IP / MAC / 长 hash / 凭据 / 本机路径）+ `scripts/number-audit.py`（**宪法与对外文档不得含实测数字**——本文件是模型与判据，不对具体实例负责；实例的账由 `qwiki-check.py` 的输出回答；模型常量（项 / 页 / ≤N 跳 这类）不计）+ `scripts/hooks/pre-push`（`git config core.hooksPath scripts/hooks` 启用，**两项都跑**，任一命中即拒绝推送）
+- **发布前检查**（发布本仓时用，不是知识库操作）：`scripts/publish-check.py`（扫真实项目代号 / 内网 IP / MAC / 长 hash / 凭据 / 本机路径）+ `scripts/number-audit.py`（宪法与对外文档不得含实测数字——判据原文见该脚本 docstring 的 `CURRENT:` 行，**引用不复制**）+ `scripts/hooks/pre-push`（`git config core.hooksPath scripts/hooks` 启用，**三项都跑**（脱敏 / 数字 / CHANGELOG 同步），任一命中即拒绝推送）
 - hook 脚本（自发生长事件驱动，四 hook 工具兼容 + pi 扩展）：`scripts/knowledge-sediment-lib.sh`（归一化层）+ `scripts/knowledge-sediment-hint.sh`、`scripts/knowledge-sediment-toolcheck.sh`、`scripts/knowledge-sediment-inject.sh`、`scripts/knowledge-sediment-subagent.sh`（ZCode 无 SubagentStop，不注册该项）；pi 适配见 `~/.pi/agent/extensions/qwiki-sediment.ts`（无 hook，事件映射同协议）
 - 参考：`references/agent-hook.md`（hook 机制说明 + 各家注册表）
 - 版本记录：`CHANGELOG.md`（随安装拷贝，记录版本历史）

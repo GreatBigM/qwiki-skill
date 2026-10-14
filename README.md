@@ -95,7 +95,7 @@ qwiki-skill/
 ├── SCHEMA.md                        ← 宪法（知识库目标态的唯一真相源，随安装拷贝）
 ├── templates/                       ← index / card-aggregate / card-track / card-measurement / card-issue / card-design / note-general 七模板
 ├── references/                      ← agent-hook（hook 机制 + 各家注册表：Hermes/Claude/Codex/ZCode，pi 走扩展）
-└── scripts/                         ← qwiki-check.py（库自检，11 项断言）+ publish-check.py（发布前脱敏）+ number-audit.py（数字口径）+ 四 hook 脚本 + hooks/pre-push（两项检查都跑）
+└── scripts/                         ← qwiki-check.py（库自检，11 项断言）+ publish-check.py（发布前脱敏）+ number-audit.py（宪法与对外文档不得含实测数字）+ 四 hook 脚本 + hooks/pre-push（三项检查都跑）
 ```
 
 ## 模型（一张图）
@@ -139,7 +139,7 @@ qwiki-skill/
 
 ```bash
 python3 scripts/publish-check.py          # 逐条判定，真实标识换 <项目A> / <IP> 占位符
-python3 scripts/number-audit.py            # 宪法与对外文档不得含实测数字（实例的账由实例回答；模型常量不计）
+python3 scripts/number-audit.py            # 宪法与对外文档不得含实测数字（判据原文见其 docstring 的 CURRENT: 行）
 git config core.hooksPath scripts/hooks   # 启用 pre-push 钩子（每个克隆各做一次）→ 命中即拒绝推送
 ```
 
