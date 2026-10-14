@@ -49,7 +49,7 @@ cp -r qwiki-skill/scripts ~/.hermes/skills/qwiki/
 ## 安装（备选：tap 方式，会被安全扫描拦截）
 
 ```bash
-# 配置 GitHub token 可避免匿名 API 限流（60 次/时 → 5000 次/时）
+# 配置 GitHub token 可大幅提高 API 限额（匿名限额很低，具体见 GitHub 文档）
 export GITHUB_TOKEN=<你的 GitHub personal access token>
 
 # 以 Hermes 为例（其余 agent 的 skills install 同理，均可能触发扫描拦截）：

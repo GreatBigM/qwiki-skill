@@ -76,7 +76,7 @@ hooks:
 ### ZCode（~/.zcode/cli/config.json）
 
 > ZCode hook 与 Claude Code 事件同名同协议（PostToolUse/UserPromptSubmit/Stop），配置在 `~/.zcode/cli/config.json`（或项目级 `.zcode/config.json`）顶层 `hooks` 键，**默认禁用，须 `"enabled": true` 才生效**；无信任门槛。ZCode 不支持 `SubagentStop`，故 subagent.sh 不注册。
-> 输出协议：注入用 `hookSpecificOutput.hookEventName + additionalContext`（inject.sh 已分支）；Stop 门禁 `{"decision":"block","reason"}` 与 Codex 同协议（ZCode 内建最多 3 次续跑）。
+> 输出协议：注入用 `hookSpecificOutput.hookEventName + additionalContext`（inject.sh 已分支）；Stop 门禁 `{"decision":"block","reason"}` 与 Codex 同协议（ZCode 内建续跑上限，比 Codex 低）。
 
 ```json
 {
