@@ -99,8 +99,8 @@ hooks:
 
 > **ZCode 注意事项**：
 > - matcher 匹配值是工具名（大小写敏感，`Bash`/`Write`/`Edit` 等）——上面注册不带 matcher，匹配全部工具，与其余三工具行为一致；toolcheck.sh 已兼容 Claude/ZCode 工具名（Write/Edit/ApplyPatch/Bash）
-> - `command` 的 `timeout` 单位是**秒**（qwiki 脚本是轻量标记/注入，默认 60s 足够）
-> - 首次配置后新会话生效；`Stop` 的 block 最多 3 次续跑（Codex 是 8 次），标记多时 AI 优先在会话内消化沉淀
+> - `command` 的 `timeout` 单位是**秒**（qwiki 脚本只做标记 / 注入，默认超时够用）
+> - 首次配置后新会话生效；`Stop` 的 block 有续跑上限（Codex 比 ZCode 高，具体数值见各工具文档），标记多时 AI 优先在会话内消化沉淀
 
 ### Codex（hooks.json）
 
@@ -127,7 +127,7 @@ hooks:
 ```
 
 > **Stop 门禁模式**（hint.sh 在 Codex 上的特殊行为）：
-> 读队列标记 → 有标记且 `stop_hook_active=false` → 输出 `{"decision":"block","reason":"沉淀指令"}` → 强制 AI 在结束前执行沉淀 → 连续 block 8 次后 CLI 自动放行。
+> 读队列标记 → 有标记且 `stop_hook_active=false` → 输出 `{"decision":"block","reason":"沉淀指令"}` → 强制 AI 在结束前执行沉淀 → 连续 block 到该工具的上限后 CLI 自动放行。
 > `stop_hook_active` 从原始 payload 提取（防无限循环）。
 >
 > **Codex 事件名实证**（hooks.json + dump 确认，2026-08-02）：
@@ -159,7 +159,7 @@ hooks:
   type=subagent_done 子代理产出         → 注入"检查子代理产出知识点"
 inject.sh 读取全部标记 → 合并为一条指令注入（Hermes 走 context，Claude/ZCode 走 hookSpecificOutput.additionalContext）→ 读后即删（确定性生命周期，不依赖 AI 清除）
   ⚠ Codex：inject.sh 不注册（UserPromptSubmit 输出被忽略，且读后即删会提前消费标记）
-  Codex / ZCode 的沉淀注入由 hint.sh Stop 门禁承担（Stop 时读标记 → block 强制沉淀；ZCode 内建最多 3 次续跑）
+  Codex / ZCode 的沉淀注入由 hint.sh Stop 门禁承担（Stop 时读标记 → block 强制沉淀；两工具都有续跑上限，ZCode 比 Codex 低）
 执行：加载本 skill → 按归属路由建卡/更新（个人→personal/，跨项目→projects/common/，项目→项目卡）
 ```
 
