@@ -5,11 +5,13 @@ CURRENT: 实测数字须落在某条「口径（… YYYY-MM-DD）」的作用域
     —— 这一行是判据的**单一真相源**：`--parity` 会断言同一句话出现在 SKILL.md 与
        README.md 里（改语义忘了改描述，pre-push 就拒推）。改判据时先改这里。
 
-CURRENT_FP: ba1beb653096bf35
-    —— 语义核（下面 `语义核 begin/end` 之间：NUM / DATE / DECL / STRUCT / VAGUE / 作用域与
-       判定那几个函数）的 sha256 前 16 位。**改了语义核必须跑 `--seal` 重签**，否则
-       `--parity` 直接拒（"实现动过、描述没重签"）。它只能证明"改过并已显式重签"，
-       **不能**证明"描述写对了"——别宣称超出这个范围。
+CURRENT_FP: a290a5dec9cb577a
+    —— 语义核（下面 `语义核 begin/end` 之间：SCAN 扫描范围 + NUM / DATE / DECL / VAGUE /
+       作用域与判定各函数 + **audit() 本体**）的 sha256 前 16 位。**改了语义核必须跑
+       `--seal` 重签**，否则 `--parity` 直接拒（"实现动过、描述没重签"）。它只能证明
+       "改过并已显式重签"，**不能**证明"描述写对了"——别宣称超出这个范围。
+       （核外只剩自指的部分：semantics_fp / seal / parity / self_test / main —— 它们
+         被排除是因为要读自己、算自己，纳入会让指纹自指不稳。）
 
 用法:
     python3 number-audit.py [仓库根]      # 默认 = 本脚本上一级
@@ -68,11 +70,11 @@ import os
 import re
 import sys
 
+# ══ 语义核 begin（改这里必须跑 --seal 重签 CURRENT_FP）══
 SCAN = ["SCHEMA.md", "README.md", "SKILL.md"]
 
 # 实测数字：整数 + 计数单位，或 占比 / 倍数（允许小数），或 N/M
 # 计数单位限定整数：否则 `3.10 卡` / `5.15 卡` 这类**线号**会被当成数量
-# ══ 语义核 begin（改这里必须跑 --seal 重签 CURRENT_FP）══
 NUM = re.compile(
     r"(?<![\w.])\d+\s*(?:张|条|行|处|跳|个|次|位|对|卡)"
     r"|(?<![\w.])\d+(?:\.\d+)?\s*(?:%|倍|×)"
@@ -195,29 +197,6 @@ def struct_reason(m, line):
     return None
 
 
-# ══ 语义核 end ══
-
-
-def semantics_fp():
-    """语义核的指纹（sha256 前 16 位）——只覆盖 begin/end 之间的实现。"""
-    src = open(os.path.abspath(__file__), encoding="utf-8").read()
-    m = re.search(r"(?s)# ══ 语义核 begin.*?# ══ 语义核 end ══", src)
-    return hashlib.sha256(m.group(0).encode()).hexdigest()[:16] if m else ""
-
-
-def seal(root):
-    """--seal：重算并回写 CURRENT_FP（改语义核的人跑一次）。"""
-    path = os.path.abspath(__file__)
-    src = open(path, encoding="utf-8").read()
-    fp = semantics_fp()
-    if not re.search(r"(?m)^CURRENT_FP:", src):
-        print("✗ docstring 缺 `CURRENT_FP:` 行")
-        return 1
-    open(path, "w", encoding="utf-8").write(
-        re.sub(r"(?m)^CURRENT_FP:.*$", f"CURRENT_FP: {fp}", src))
-    print(f"已重签 CURRENT_FP: {fp}")
-    print("（若语义确实变了，接着把 SKILL.md / README.md 的描述改成新的 CURRENT 那句话）")
-    return 0
 
 
 def audit(root):
@@ -255,6 +234,27 @@ def audit(root):
                 )
     return bad, hints
 
+
+# ══ 语义核 end ══
+
+def semantics_fp():
+    """语义核的指纹（sha256 前 16 位）——只覆盖 begin/end 之间的实现。"""
+    src = open(os.path.abspath(__file__), encoding="utf-8").read()
+    m = re.search(r"(?s)# ══ 语义核 begin.*?# ══ 语义核 end ══", src)
+    return hashlib.sha256(m.group(0).encode()).hexdigest()[:16] if m else ""
+def seal(root):
+    """--seal：重算并回写 CURRENT_FP（改语义核的人跑一次）。"""
+    path = os.path.abspath(__file__)
+    src = open(path, encoding="utf-8").read()
+    fp = semantics_fp()
+    if not re.search(r"(?m)^CURRENT_FP:", src):
+        print("✗ docstring 缺 `CURRENT_FP:` 行")
+        return 1
+    open(path, "w", encoding="utf-8").write(
+        re.sub(r"(?m)^CURRENT_FP:.*$", f"CURRENT_FP: {fp}", src))
+    print(f"已重签 CURRENT_FP: {fp}")
+    print("（若语义确实变了，接着把 SKILL.md / README.md 的描述改成新的 CURRENT 那句话）")
+    return 0
 
 NUMSTR = re.compile(r"「([^」]+)」")
 SELF_TEST = [
