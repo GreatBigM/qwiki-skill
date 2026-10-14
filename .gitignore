@@ -1,0 +1,7 @@
+# Python 字节码（py_compile / 直接运行脚本都会产出）
+__pycache__/
+*.pyc
+
+# 编辑器 / 系统杂物
+.DS_Store
+*.swp
