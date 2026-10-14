@@ -11,12 +11,7 @@ python3 "$ROOT/scripts/publish-check.py" || {
 }
 
 python3 "$ROOT/scripts/number-audit.py" || {
-  echo "✗ 数字审计未通过 —— 拒绝推送（实测数字补「口径 + 日期」，结构性计数调 STRUCT）" >&2
-  exit 1
-}
-
-python3 "$ROOT/scripts/number-audit.py" --parity || {
-  echo "✗ 描述同步检查未通过 —— 拒绝推送（判据改了，SKILL.md / README.md 的描述没跟上）" >&2
+  echo "✗ 数字审计未通过 —— 拒绝推送（宪法与对外文档不得含实测数字：样本挪进知识库的卡，或改成公式）" >&2
   exit 1
 }
 

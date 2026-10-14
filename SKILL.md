@@ -1,7 +1,7 @@
 ---
 name: qwiki
 description: 个人知识库管理：卡片索引、知识沉淀、自动检索，AI 替你积累项目经验。
-version: 2.12.2
+version: 2.12.3
 author: GreatBigM
 license: MIT
 category: knowledge
@@ -312,7 +312,7 @@ INDEX 条目数、已入驻项目、知识文件数。
 - init 模板（建库）：`templates/index.md`
 - 卡片模板（生成卡：**先定用途**；聚合卡 / 独立卡由内容推导）：`templates/card-aggregate.md`（聚合卡）、`templates/card-track.md`（独立·轨迹卡）、`templates/card-measurement.md`（独立·实测卡）、`templates/card-issue.md`（独立·问题说明卡）、`templates/card-design.md`（独立·设计说明卡）、`templates/note-general.md`（独立·随笔卡）；审查卡与机制·手册类走自由骨架（无模板）
 - **自检脚本**：`scripts/qwiki-check.py`（SCHEMA/SKILL 各项约定的可执行版；只读、仅需 python3 标准库，PyYAML 可选）
-- **发布前检查**（发布本仓时用，不是知识库操作）：`scripts/publish-check.py`（扫真实项目代号 / 内网 IP / MAC / 长 hash / 凭据 / 本机路径）+ `scripts/number-audit.py`（实测数字须落在某条「口径（… YYYY-MM-DD）」的作用域内（同列表项子树 / 同段 / 同一引用块；空行切断归属）；结构性计数 / 操作返回类不计）+ `scripts/hooks/pre-push`（`git config core.hooksPath scripts/hooks` 启用，**两项都跑**，任一命中即拒绝推送）
+- **发布前检查**（发布本仓时用，不是知识库操作）：`scripts/publish-check.py`（扫真实项目代号 / 内网 IP / MAC / 长 hash / 凭据 / 本机路径）+ `scripts/number-audit.py`（**宪法与对外文档不得含实测数字**——本文件是模型与判据，不对具体实例负责；实例的账由 `qwiki-check.py` 的输出回答；模型常量（项 / 页 / ≤N 跳 这类）不计）+ `scripts/hooks/pre-push`（`git config core.hooksPath scripts/hooks` 启用，**两项都跑**，任一命中即拒绝推送）
 - hook 脚本（自发生长事件驱动，四 hook 工具兼容 + pi 扩展）：`scripts/knowledge-sediment-lib.sh`（归一化层）+ `scripts/knowledge-sediment-hint.sh`、`scripts/knowledge-sediment-toolcheck.sh`、`scripts/knowledge-sediment-inject.sh`、`scripts/knowledge-sediment-subagent.sh`（ZCode 无 SubagentStop，不注册该项）；pi 适配见 `~/.pi/agent/extensions/qwiki-sediment.ts`（无 hook，事件映射同协议）
 - 参考：`references/agent-hook.md`（hook 机制说明 + 各家注册表）
 - 版本记录：`CHANGELOG.md`（随安装拷贝，记录版本历史）
