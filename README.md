@@ -92,7 +92,7 @@ qwiki-skill/
 ├── SKILL.md                         ← 操作手册（九操作路由 + 详细步骤，仓库根即 skill）
 ├── templates/                       ← index / card-aggregate / card-track / card-measurement / card-issue / card-design / note-general 七模板
 ├── references/                      ← agent-hook（hook 机制 + 各家注册表：Hermes/Claude/Codex/ZCode，pi 走扩展）
-└── scripts/                         ← qwiki-check.py（库自检，11 项断言）+ publish-check.py（发布前脱敏）+ 四 hook 脚本 + hooks/pre-push
+└── scripts/                         ← qwiki-check.py（库自检，11 项断言）+ publish-check.py（发布前脱敏）+ number-audit.py（数字口径）+ 四 hook 脚本 + hooks/pre-push（两项检查都跑）
 ```
 
 ## 模型（一张图）
@@ -136,6 +136,7 @@ qwiki-skill/
 
 ```bash
 python3 scripts/publish-check.py          # 逐条判定，真实标识换 <项目A> / <IP> 占位符
+python3 scripts/number-audit.py            # 实测数字必须带「口径 + 日期」（结构性计数走 ALLOW 白名单）
 git config core.hooksPath scripts/hooks   # 启用 pre-push 钩子（每个克隆各做一次）→ 命中即拒绝推送
 ```
 

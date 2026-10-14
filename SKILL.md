@@ -250,7 +250,7 @@ hook 只在**本轮注入文本**里告诉你「有标记」，标记文件本�
 1. 库侧现状：`cd ~/qwiki && git log --oneline -12 && git status --short` —— 工作区干净且时间窗内已有对应 commit ⇒ 产出已沉淀，标记属陈旧遗留
 2. 反查产出事件是否真的存在（Hermes 侧 state.db，只读连接即可，不必停任何进程）：
    - `select session_id,timestamp from messages where tool_calls like '%delegate_task%' and timestamp > <窗口起点 epoch> order by timestamp desc`
-   - 再看 `sessions`（id/model/started_at/title），`platform=subagent` 的会话才是真子代理；窗口内 0 条 delegate_task ⇒ 不存在产出该标记的子代理，标记必为陈旧/退化
+   - 再看 `sessions`（id/model/started_at/title），`platform=subagent` 的会话才是真子代理；窗口内查不到 delegate_task ⇒ 不存在产出该标记的子代理，标记必为陈旧/退化
 3. 跨工具排查：队列跨工具共享（lib.sh `SEDIMENT_QUEUE_DIR`），标记可能来自别的 agent —— 查各自会话落点的新增/改动（Claude `~/.claude/projects/**/*.jsonl` 按 mtime；本机已卸载的工具不必再列）
 4. 判定并回报：未沉淀 → 按归属路由建卡/更新 + INDEX + commit；已沉淀 → 忽略本条，给出依据（commit hash / 时间窗）
 
@@ -268,7 +268,7 @@ INDEX 条目数、已入驻项目、知识文件数。
 
 ---
 
-## 知识文件模板（种类 / 用途 × 模板）
+## 知识文件模板（呈现 / 用途 × 模板）
 
 **先定用途**（种类由内容推导：谈对象 = 独立卡，谈聚合 = 聚合卡）——用途决定用哪个模板；`type` 只区分**有没有约定骨架**（有 → `card`，自由骨架 → `note`）：
 
@@ -312,7 +312,7 @@ INDEX 条目数、已入驻项目、知识文件数。
 - init 模板（建库）：`templates/index.md`
 - 卡片模板（生成卡：**先定用途**；聚合卡 / 独立卡由内容推导）：`templates/card-aggregate.md`（聚合卡）、`templates/card-track.md`（独立·轨迹卡）、`templates/card-measurement.md`（独立·实测卡）、`templates/card-issue.md`（独立·问题说明卡）、`templates/card-design.md`（独立·设计说明卡）、`templates/note-general.md`（独立·随笔卡）；审查卡与机制·手册类走自由骨架（无模板）
 - **自检脚本**：`scripts/qwiki-check.py`（SCHEMA/SKILL 各项约定的可执行版；只读、仅需 python3 标准库，PyYAML 可选）
-- **发布前脱敏检查**（发布本仓时用，不是知识库操作）：`scripts/publish-check.py`（扫真实项目代号 / 内网 IP / MAC / 长 hash / 凭据 / 本机路径）+ `scripts/hooks/pre-push`（`git config core.hooksPath scripts/hooks` 启用，命中即拒绝推送）
+- **发布前检查**（发布本仓时用，不是知识库操作）：`scripts/publish-check.py`（扫真实项目代号 / 内网 IP / MAC / 长 hash / 凭据 / 本机路径）+ `scripts/number-audit.py`（宪法与对外文档里的实测数字必须带「口径 + 日期」）+ `scripts/hooks/pre-push`（`git config core.hooksPath scripts/hooks` 启用，**两项都跑**，任一命中即拒绝推送）
 - hook 脚本（自发生长事件驱动，四 hook 工具兼容 + pi 扩展）：`scripts/knowledge-sediment-lib.sh`（归一化层）+ `scripts/knowledge-sediment-hint.sh`、`scripts/knowledge-sediment-toolcheck.sh`、`scripts/knowledge-sediment-inject.sh`、`scripts/knowledge-sediment-subagent.sh`（ZCode 无 SubagentStop，不注册该项）；pi 适配见 `~/.pi/agent/extensions/qwiki-sediment.ts`（无 hook，事件映射同协议）
 - 参考：`references/agent-hook.md`（hook 机制说明 + 各家注册表）
 - 版本记录：`CHANGELOG.md`（随安装拷贝，记录版本历史）
