@@ -5,6 +5,12 @@ CURRENT: 实测数字须落在某条「口径（… YYYY-MM-DD）」的作用域
     —— 这一行是判据的**单一真相源**：`--parity` 会断言同一句话出现在 SKILL.md 与
        README.md 里（改语义忘了改描述，pre-push 就拒推）。改判据时先改这里。
 
+CURRENT_FP: ba1beb653096bf35
+    —— 语义核（下面 `语义核 begin/end` 之间：NUM / DATE / DECL / STRUCT / VAGUE / 作用域与
+       判定那几个函数）的 sha256 前 16 位。**改了语义核必须跑 `--seal` 重签**，否则
+       `--parity` 直接拒（"实现动过、描述没重签"）。它只能证明"改过并已显式重签"，
+       **不能**证明"描述写对了"——别宣称超出这个范围。
+
 用法:
     python3 number-audit.py [仓库根]      # 默认 = 本脚本上一级
     python3 number-audit.py --self-test   # 逐数字比对的正反样本（含已知缺陷类别的回归组）
@@ -49,11 +55,15 @@ CURRENT: 实测数字须落在某条「口径（… YYYY-MM-DD）」的作用域
     ⓑ **限定词是可绕过的**：数字前加 `≥` / `至少` 即免检，所以这一类的豁免**一律报提示**
        （qualifier），让旁路可见；项 / 页 / 次每时 / 0-1 条 属真结构性计数，不提示。
     ⓒ `N/M` 只认**两侧各 ≥2 位**（`95/95` 是测量；`4/5` 这类轮次分数不是）。
+    ⓓ **表格单元格不是列表项 / 引用块** ⇒ 表格里的实测数字无法被口径覆盖（当前三份文件
+       的表内无实测数字，属边界）。要在表里放实测数字，就把口径写成表下方的 `>` 引用块
+       并保持与表相邻，或把该项改成列表。
 
 覆盖范围（取舍，不是缺陷）：只扫 SCHEMA.md / README.md / SKILL.md。
     CHANGELOG 是带日期的记录（数字本就该落在那里）；references/ 与 templates/ 未纳入。
     要扩就把文件名加进 SCAN。
 """
+import hashlib
 import os
 import re
 import sys
@@ -62,6 +72,7 @@ SCAN = ["SCHEMA.md", "README.md", "SKILL.md"]
 
 # 实测数字：整数 + 计数单位，或 占比 / 倍数（允许小数），或 N/M
 # 计数单位限定整数：否则 `3.10 卡` / `5.15 卡` 这类**线号**会被当成数量
+# ══ 语义核 begin（改这里必须跑 --seal 重签 CURRENT_FP）══
 NUM = re.compile(
     r"(?<![\w.])\d+\s*(?:张|条|行|处|跳|个|次|位|对|卡)"
     r"|(?<![\w.])\d+(?:\.\d+)?\s*(?:%|倍|×)"
@@ -184,6 +195,31 @@ def struct_reason(m, line):
     return None
 
 
+# ══ 语义核 end ══
+
+
+def semantics_fp():
+    """语义核的指纹（sha256 前 16 位）——只覆盖 begin/end 之间的实现。"""
+    src = open(os.path.abspath(__file__), encoding="utf-8").read()
+    m = re.search(r"(?s)# ══ 语义核 begin.*?# ══ 语义核 end ══", src)
+    return hashlib.sha256(m.group(0).encode()).hexdigest()[:16] if m else ""
+
+
+def seal(root):
+    """--seal：重算并回写 CURRENT_FP（改语义核的人跑一次）。"""
+    path = os.path.abspath(__file__)
+    src = open(path, encoding="utf-8").read()
+    fp = semantics_fp()
+    if not re.search(r"(?m)^CURRENT_FP:", src):
+        print("✗ docstring 缺 `CURRENT_FP:` 行")
+        return 1
+    open(path, "w", encoding="utf-8").write(
+        re.sub(r"(?m)^CURRENT_FP:.*$", f"CURRENT_FP: {fp}", src))
+    print(f"已重签 CURRENT_FP: {fp}")
+    print("（若语义确实变了，接着把 SKILL.md / README.md 的描述改成新的 CURRENT 那句话）")
+    return 0
+
+
 def audit(root):
     bad, hints = [], []
     for name in SCAN:
@@ -278,29 +314,34 @@ def self_test():
 
 
 def parity(root):
-    """--parity：断言 docstring 的 CURRENT 行在 SKILL.md / README.md 里逐字出现。
-
-    治的是**同一个病**的第三种形态：判据改了、描述没改（本仓已复发三次，靠评审提醒
-    不是办法）—— 把"同步"变成机器能查的。
-    """
+    """--parity：① 验语义核指纹（实现动过没重签 ⇒ 拒）② 断言 CURRENT 那句话三方逐字一致。"""
     me = open(os.path.abspath(__file__), encoding="utf-8").read()
     m = re.search(r"(?m)^CURRENT:\s*(.+)$", me)
     if not m:
         print("✗ 本脚本 docstring 缺 `CURRENT:` 行（判据的单一真相源）")
         return 1
     canon = m.group(1).strip()
+
     bad = []
+    sealed = re.search(r"(?m)^CURRENT_FP:\s*(\S+)", me)
+    if not sealed:
+        bad.append("docstring 缺 `CURRENT_FP:` 行（跑 `--seal` 生成）")
+    elif sealed.group(1) != semantics_fp():
+        bad.append("语义核已变但未重签 CURRENT_FP ⇒ 跑 `--seal`，"
+                   "并把 SKILL.md / README.md 的描述改成新的 CURRENT 那句")
+
     for name in ("SKILL.md", "README.md"):
         path = os.path.join(root, name)
         if not os.path.exists(path):
             continue
         if canon not in open(path, encoding="utf-8").read():
             bad.append(f"{name} 里找不到 CURRENT 那句（判据改了但描述没改）")
+
     print("描述同步检查（--parity）：" + ("通过 ✓" if not bad else f"{len(bad)} 处不同步"))
     for b in bad:
         print(f"  ✗ {b}")
     if bad:
-        print(f"\n  应逐字出现：{canon}")
+        print(f"\n  当前判据：{canon}")
         return 1
     return 0
 
@@ -308,7 +349,9 @@ def parity(root):
 def main(argv):
     if "--self-test" in argv:
         return self_test()
-    root = os.path.expanduser(argv[0]) if argv else os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if "--seal" in argv:
+        return seal(None)
+    root = os.path.expanduser(argv[0]) if argv and not argv[0].startswith("-") else os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     if "--parity" in argv:
         return parity(root)
     bad, hints = audit(root)
@@ -316,7 +359,7 @@ def main(argv):
     for b in bad:
         print(f"  ✗ {b}")
     if hints:
-        print("\n  提示（模糊量词，不判失败——若这里原本是具体数字，请改回并补口径）：")
+        print("\n  提示（不判失败）：")
         for h in hints:
             print(f"    · {h}")
     if bad:
