@@ -36,6 +36,8 @@ git clone https://gitee.com/GreatBigM/qwiki-skill.git
 # 2. 复制到目标工具的 skills 目录（不经过安全扫描）
 mkdir -p ~/.hermes/skills/qwiki
 cp qwiki-skill/SKILL.md ~/.hermes/skills/qwiki/
+cp qwiki-skill/SCHEMA.md ~/.hermes/skills/qwiki/     # 宪法：SKILL.md 全程引用它，不可省
+cp qwiki-skill/CHANGELOG.md ~/.hermes/skills/qwiki/
 cp -r qwiki-skill/templates ~/.hermes/skills/qwiki/
 cp -r qwiki-skill/references ~/.hermes/skills/qwiki/
 cp -r qwiki-skill/scripts ~/.hermes/skills/qwiki/
@@ -90,6 +92,7 @@ qwiki-skill/
 ├── install.sh                       ← 一键安装脚本（多 agent 目标）
 ├── CHANGELOG.md                     ← 版本历史
 ├── SKILL.md                         ← 操作手册（九操作路由 + 详细步骤，仓库根即 skill）
+├── SCHEMA.md                        ← 宪法（知识库目标态的唯一真相源，随安装拷贝）
 ├── templates/                       ← index / card-aggregate / card-track / card-measurement / card-issue / card-design / note-general 七模板
 ├── references/                      ← agent-hook（hook 机制 + 各家注册表：Hermes/Claude/Codex/ZCode，pi 走扩展）
 └── scripts/                         ← qwiki-check.py（库自检，11 项断言）+ publish-check.py（发布前脱敏）+ number-audit.py（数字口径）+ 四 hook 脚本 + hooks/pre-push（两项检查都跑）

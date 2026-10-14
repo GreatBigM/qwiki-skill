@@ -18,13 +18,19 @@ version_gt() { [ "$1" != "$2" ] && [ -n "$2" ] && [ "$(printf '%s\n%s\n' "$2" "$
 # ─── 参数解析 ──────────────────────────────────────────────────────
 TARGET_ARG=""
 ALL_FLAG=0
+WANT_TARGET=0
 for a in "$@"; do
+    if [ "$WANT_TARGET" -eq 1 ]; then TARGET_ARG="$a"; WANT_TARGET=0; continue; fi
     case "$a" in
         --target=*) TARGET_ARG="${a#*=}" ;;
-        --target) TARGET_ARG="" ;;  # 由下一参数接管（简化：仅支持 --target=a,b 形式）
+        --target) WANT_TARGET=1 ;;   # 空格形式：--target hermes,claude
         --all) ALL_FLAG=1 ;;
     esac
 done
+if [ "$WANT_TARGET" -eq 1 ]; then
+    echo "❌ --target 缺参数（用法：--target hermes,claude 或 --target=hermes,claude）" >&2
+    exit 1
+fi
 
 # ─── 目标探测：检测本机已安装的 agent ───────────────────────────────
 detect_targets() {

@@ -52,15 +52,17 @@ EVENT_MAP = {
     "on_session_start": "session_start",
     "on_session_finalize": "session_finalize",
     "on_session_reset": "session_reset",
-    # Claude Code / ZCode (PascalCase，两者事件同名，同一套归一化)
+    # PascalCase 事件名（Claude Code / ZCode / Codex 三家同名同义，一张表；改这里就够）
     "PostToolUse": "post_tool",
     "UserPromptSubmit": "pre_llm",
     "SessionEnd": "session_end",
-    "SubagentStop": "subagent_stop",
     "SessionStart": "session_start",
+    "SubagentStop": "subagent_stop",
+    "SubagentStart": "subagent_start",
+    "PreToolUse": "pre_tool",
     "PreCompact": "pre_compact",
     "PostCompact": "post_compact",
-    "PreToolUse": "pre_tool",
+    "Stop": "session_end",                                # Codex / ZCode 的会话结束事件
     # Codex (snake_case，二进制实证：pre_tool_use/post_tool_use/user_prompt_submit/session_end 等)
     "pre_tool_use": "pre_tool",
     "post_tool_use": "post_tool",
@@ -71,16 +73,6 @@ EVENT_MAP = {
     "subagent_stop": "subagent_stop",
     "pre_compact": "pre_compact",
     "post_compact": "post_compact",
-    # Codex PascalCase（hooks.json 实证：hook_event_name 字段为 PascalCase）
-    "UserPromptSubmit": "pre_llm",
-    "PostToolUse": "post_tool",
-    "PreToolUse": "pre_tool",
-    "Stop": "session_end",
-    "SessionEnd": "session_end",
-    "SubagentStop": "subagent_stop",
-    "SubagentStart": "subagent_start",
-    "PreCompact": "pre_compact",
-    "PostCompact": "post_compact",
 }
 evt_raw = data.get("hook_event_name", "")
 evt = EVENT_MAP.get(evt_raw, "other")

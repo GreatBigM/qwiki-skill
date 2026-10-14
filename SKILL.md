@@ -1,7 +1,7 @@
 ---
 name: qwiki
 description: 个人知识库管理：卡片索引、知识沉淀、自动检索，AI 替你积累项目经验。
-version: 2.12.1
+version: 2.12.2
 author: GreatBigM
 license: MIT
 category: knowledge
@@ -250,7 +250,7 @@ hook 只在**本轮注入文本**里告诉你「有标记」，标记文件本�
 1. 库侧现状：`cd ~/qwiki && git log --oneline -12 && git status --short` —— 工作区干净且时间窗内已有对应 commit ⇒ 产出已沉淀，标记属陈旧遗留
 2. 反查产出事件是否真的存在（Hermes 侧 state.db，只读连接即可，不必停任何进程）：
    - `select session_id,timestamp from messages where tool_calls like '%delegate_task%' and timestamp > <窗口起点 epoch> order by timestamp desc`
-   - 再看 `sessions`（id/model/started_at/title），`platform=subagent` 的会话才是真子代理；窗口内 0 条 delegate_task ⇒ 不存在产出该标记的子代理，标记必为陈旧/退化
+   - 再看 `sessions`（id/source/model/started_at/title），`source='subagent'` 的会话才是真子代理（该表**无 `platform` 列**）；窗口内 0 条 delegate_task ⇒ 不存在产出该标记的子代理，标记必为陈旧/退化
 3. 跨工具排查：队列跨工具共享（lib.sh `SEDIMENT_QUEUE_DIR`），标记可能来自别的 agent —— 查各自会话落点的新增/改动（Claude `~/.claude/projects/**/*.jsonl` 按 mtime；本机已卸载的工具不必再列）
 4. 判定并回报：未沉淀 → 按归属路由建卡/更新 + INDEX + commit；已沉淀 → 忽略本条，给出依据（commit hash / 时间窗）
 

@@ -1,4 +1,15 @@
 # Changelog
+## 2.12.2 (2026-10-14)
+
+### Fixed
+- **`install.sh` 的 `--target hermes,claude`（空格形式）从未生效**：解析只认 `--target=`，空格形式把值吞成空串后落进"非交互 = 装全部"分支——而 README、用法行、脚本头部**三处文档全写的空格形式**。现两种形式都支持，且 `--target` 缺参数时直接报错退出（不再静默装全部）。
+- **README 手动安装清单漏 `SCHEMA.md`**（install.sh 是拷的）：手动路径装出来的 skill 缺宪法，而 SKILL.md 有 19 处引用它。已补 `SCHEMA.md` + `CHANGELOG.md`，仓库结构块同步补一行。
+- **`SKILL.md` 沉淀核实第 2 步的 state.db 语句跑不通**：写的是 `platform=subagent`，而 `sessions` 表**没有 `platform` 列**（真列名 `source`，取值 cli/subagent/cron/…）⇒ 这一步在本机必然报错、被静默跳过，等于沉淀核实少一步。已改为 `source='subagent'`。
+
+### Changed
+- **`pre-push` 的 CHANGELOG 闸门：文案与正则不一致**（文案说"scripts 之一"，正则只覆盖 3 个 `.py`；改 hook 脚本或 `references/` 不触发）⇒ 正则收成一条 `^(SKILL\.md|SCHEMA\.md|templates/|scripts/|references/)`，文案照它写（`references/` 入列）。修完正则比原来短——原第二分支是替 `templates/` 凑前缀用的。
+- **`knowledge-sediment-lib.sh` 的 `EVENT_MAP` 有重复键**：PascalCase 事件名在 Claude 块与 Codex PascalCase 块各定义一次（Python dict 后键覆盖前键，值相同故无害，但会骗过下一个改这张表的人）⇒ 合并为一张 PascalCase 表，Codex 侧只留独有的 `Stop` / `SubagentStart`。改后逐键比对：键集与取值零变化。（唯一剩余的同名键 `subagent_stop` 是 Hermes 与 Codex 两家都在用，保留。）
+
 ## 2.12.1 (2026-10-14)
 
 ### Changed
