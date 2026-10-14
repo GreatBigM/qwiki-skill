@@ -136,7 +136,7 @@ qwiki-skill/
 
 ```bash
 python3 scripts/publish-check.py          # 逐条判定，真实标识换 <项目A> / <IP> 占位符
-python3 scripts/number-audit.py            # 实测数字所在块必须有「口径：…（YYYY-MM-DD 实测）」行
+python3 scripts/number-audit.py            # 实测数字须落在某条「口径（… YYYY-MM-DD）」的作用域内（同列表项子树 / 同段 / 同一引用块；空行切断归属）
 git config core.hooksPath scripts/hooks   # 启用 pre-push 钩子（每个克隆各做一次）→ 命中即拒绝推送
 ```
 

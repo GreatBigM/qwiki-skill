@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 """qwiki 数字审计 —— 宪法与对外文档里的实测数字必须落在「口径行」的作用域里。
 
+CURRENT: 实测数字须落在某条「口径（… YYYY-MM-DD）」的作用域内（同列表项子树 / 同段 / 同一引用块；空行切断归属）
+    —— 这一行是判据的**单一真相源**：`--parity` 会断言同一句话出现在 SKILL.md 与
+       README.md 里（改语义忘了改描述，pre-push 就拒推）。改判据时先改这里。
+
 用法:
     python3 number-audit.py [仓库根]      # 默认 = 本脚本上一级
     python3 number-audit.py --self-test   # 逐数字比对的正反样本（含已知缺陷类别的回归组）
-退出码: 0 = 全部合规；1 = 有裸数字（可直接串进 pre-push / CI）
+    python3 number-audit.py --parity      # 断言 CURRENT 那句在 SKILL.md / README.md 里逐字相同
+退出码: 0 = 全部合规；1 = 有裸数字 / 描述与实现不一致（可直接串进 pre-push / CI）
 
 **为什么要有它（2026-10-14）**：同一条规则（数字必须带口径 + 日期）连立三轮，
 每轮都靠人工 grep 补漏——补 2 处漏 3 处、再补 3 处又漏 1 处，其中一处是
@@ -64,6 +69,11 @@ NUM = re.compile(
 )
 DATE = re.compile(r"20\d\d-\d\d-\d\d")
 
+# 「口径」必须是**被边界引导的声明**：前面是行首 / 括号 / 句读 / 加粗。
+# 否则「此前口径写作…」「工具侧口径…」这类**提到**口径这个词的句子会被当成声明，
+# 把同项的实测数字一并无条件免检（洞 B：2026-10-14 由删除实验证实）。
+DECL = re.compile(r"(?:^|[（(，,；;。：:])\s*\*{0,2}口径")
+
 # 结构性 / 操作返回 / 区间：只看紧邻前后文
 
 # 模糊量词：只提示、不判失败
@@ -78,8 +88,8 @@ def strip_prefix(line):
 
 
 def is_decl(line):
-    """口径声明：含「口径」且有日期——允许行内写法。"""
-    return "口径" in line and bool(DATE.search(line))
+    """口径声明：**被边界引导**的「口径」+ 同行日期（行内口径也算）。"""
+    return bool(DECL.search(strip_prefix(line)) or DECL.search(line)) and bool(DATE.search(line))
 
 
 def indent_of(line):
@@ -239,6 +249,12 @@ SELF_TEST = [
     ("- 回链 95/95 全绿\n", {"95/95"}, "★ 两位 `N/M` 仍是测量，须带口径"),
     ("全库 186 条关系，口径如下\n口径：（186 条 = 双链边数，2026-10-14 实测）\n", set(),
      "★ 无空行的口径行与上一行属同一段 ⇒ 覆盖该段"),
+    ("- 某机制：此前口径写作旧说法（2026-10-13 定稿），实测 33 张因此分叉\n", {"33 张"},
+     "★ 伪口径：提到「口径」这个词 ≠ 口径声明（洞 B 回归）"),
+    ("- 某机制：记忆分层是工具侧口径：本宪法不定义（2026-10-13 清理），全库 190 卡\n", {"190 卡"},
+     "★ 伪口径变体：术语解释里的「口径」（洞 B 回归）"),
+    ("- 某段 86 张卡（口径 = 该段根层 .md 数，2026-10-14 实测）\n", set(),
+     "正向控制：行内口径（括号引导）仍算声明"),
     ("- **聚合卡承担中转**：61 张子卡 1830 对\n  - **口径（2026-10-14 实测）**：子卡 = 正文段列出的独立卡\n"
      "- 另一条无关的：全库 190 卡\n", {"190 卡"},
      "★ 块级连坐回归：口径行只覆盖它所属的列表项，同块另一列表项的数字照查"),
@@ -261,10 +277,40 @@ def self_test():
     return 1 if fail else 0
 
 
+def parity(root):
+    """--parity：断言 docstring 的 CURRENT 行在 SKILL.md / README.md 里逐字出现。
+
+    治的是**同一个病**的第三种形态：判据改了、描述没改（本仓已复发三次，靠评审提醒
+    不是办法）—— 把"同步"变成机器能查的。
+    """
+    me = open(os.path.abspath(__file__), encoding="utf-8").read()
+    m = re.search(r"(?m)^CURRENT:\s*(.+)$", me)
+    if not m:
+        print("✗ 本脚本 docstring 缺 `CURRENT:` 行（判据的单一真相源）")
+        return 1
+    canon = m.group(1).strip()
+    bad = []
+    for name in ("SKILL.md", "README.md"):
+        path = os.path.join(root, name)
+        if not os.path.exists(path):
+            continue
+        if canon not in open(path, encoding="utf-8").read():
+            bad.append(f"{name} 里找不到 CURRENT 那句（判据改了但描述没改）")
+    print("描述同步检查（--parity）：" + ("通过 ✓" if not bad else f"{len(bad)} 处不同步"))
+    for b in bad:
+        print(f"  ✗ {b}")
+    if bad:
+        print(f"\n  应逐字出现：{canon}")
+        return 1
+    return 0
+
+
 def main(argv):
     if "--self-test" in argv:
         return self_test()
     root = os.path.expanduser(argv[0]) if argv else os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if "--parity" in argv:
+        return parity(root)
     bad, hints = audit(root)
     print(f"数字审计：{root}")
     for b in bad:
