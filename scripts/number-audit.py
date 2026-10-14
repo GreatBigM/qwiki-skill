@@ -37,6 +37,13 @@
 
 单位表：`%` `张` `条` `行` `处` `跳` `个` `次` `位` `对` `卡` `倍` `×`，以及 `N/M`
 
+自审实测到的三条边界（取舍，已知）:
+    ⓐ **口径必须与它描述的数字在同一个列表项 / 引用块内**——写成独立段落会被判裸数字
+       （假阳性）。把它当**书写规范**：数字和它的口径写在一起。
+    ⓑ **限定词是可绕过的**：数字前加 `≥` / `至少` 即免检，所以这一类的豁免**一律报提示**
+       （qualifier），让旁路可见；项 / 页 / 次每时 / 0-1 条 属真结构性计数，不提示。
+    ⓒ `N/M` 形过宽：`95/95`（测量）与 `4/5`（轮次）同形，后者会被判裸数字。文里少用即无碍。
+
 覆盖范围（取舍，不是缺陷）：只扫 SCHEMA.md / README.md / SKILL.md。
     CHANGELOG 是带日期的记录（数字本就该落在那里）；references/ 与 templates/ 未纳入。
     要扩就把文件名加进 SCAN。
@@ -122,33 +129,34 @@ def scopes(raw, code):
         scope = {head, i}
         k = head + 1
         while k < len(raw) and raw[k].strip() != "" and not code[k]:
-            if indent_of(raw[k]) > base:
-                scope.add(k)
-                k += 1
-                continue
-            if indent_of(raw[k]) == base and raw[k].lstrip().startswith(("-", "*", "+")):
-                k += 1            # 同级列表项：不进作用域，但继续向后扫
-                continue
-            break
+            if indent_of(raw[k]) <= base:
+                break             # 同级（或更浅）⇒ 本列表项到此为止
+            scope.add(k)          # 只收**更深缩进**的行 = 本项自己的子树
+            k += 1
         out.append(scope)
     return out
 
 
-def is_struct(m, line):
-    """结构性计数 / 操作返回 / 区间 —— 锚定在匹配项本身（单位在匹配项内部，故看 tok）。"""
+def struct_reason(m, line):
+    """→ None（不是结构性）| "qualifier"（限定词豁免，**要提示**）| "structural"（真结构性计数）。
+
+    锚定在匹配项本身（单位在匹配项内部，故看 tok）。
+    限定词那一类是可被绕过的（在数字前加 `≥` 就行），所以它豁免时要**报提示**；
+    项 / 页 / 次每小时 / 0-1 条 是真结构性计数，不必提示。
+    """
     tok = m.group(0)
     pre = line[max(0, m.start() - 10):m.start()]
     if (re.search(r"(?:≥|≤|<|>)\s*$", pre)
             or re.search(r"(?:至少|不超过|最多|最少|至多)[^，。；]{0,6}$", pre)
             or re.search(r"[-–]\s*$", pre)):
-        return True                                  # ≥80 / 至少应有 1 张 / 1-3 个
+        return "qualifier"                           # ≥80 / 至少应有 1 张 / 1-3 个
     digits = re.match(r"\d+", tok)
     v = int(digits.group(0)) if digits else None
     if tok.rstrip().endswith(("项", "页")) or re.search(r"次\s*/\s*时\s*$", tok):
-        return True                                  # 11 项断言 / 5 页 / 60 次/时
+        return "structural"                          # 11 项断言 / 5 页 / 60 次/时
     if tok.rstrip().endswith("条") and v in (0, 1):
-        return True                                  # 0 条 / 1 条 = 有无判断
-    return False
+        return "structural"                          # 0 条 / 1 条 = 有无判断
+    return None
 
 
 def audit(root):
@@ -172,7 +180,13 @@ def audit(root):
                 continue
             line = re.sub(r"`[^`]*`", "", ln)        # 行内代码不属于实测数字
             for m in NUM.finditer(line):
-                if is_struct(m, line):
+                reason = struct_reason(m, line)
+                if reason == "qualifier":
+                    hints.append(
+                        f"{name}:{i + 1} 限定词豁免「{m.group(0).strip()}」—— "
+                        "前置 ≥ / ≤ / 至少 等限定词使其免检；确认它是结构性阈值而非实测值")
+                    continue
+                if reason:
                     continue
                 bad.append(
                     f"{name}:{i + 1} 裸数字「{m.group(0).strip()}」"
@@ -202,6 +216,8 @@ SELF_TEST = [
     ("- 310 线 ↔ 515 线 ⇒ 3.10 卡到 5.15 卡 3 跳可达\n", {"3 跳"},
      "★ 线号 / 版本号不是量：3.10 卡 · 5.15 卡 不误报（3 跳 是真数字）"),
     ("- 当前 v4 卡片体系下的迁移规则\n", set(), "★ 版本前缀 v4 不得被当成「4 卡」"),
+    ("- **口径（2026-10-14 实测）**：无关说明\n- 另一项\n  - 子项里 186 张卡\n", {"186 张"},
+     "★ 兄弟项的子项不得被上一个口径行吞掉（v3 首版作用域循环写错，实测假阴性）"),
     ("- **聚合卡承担中转**：61 张子卡 1830 对\n  - **口径（2026-10-14 实测）**：子卡 = 正文段列出的独立卡\n"
      "- 另一条无关的：全库 190 卡\n", {"190 卡"},
      "★ 块级连坐回归：口径行只覆盖它所属的列表项，同块另一列表项的数字照查"),
