@@ -66,6 +66,8 @@ hermes skills install qwiki
 
 零外部 skill 依赖——hook 机制说明已内嵌（references/agent-hook.md，含各家注册表）。
 
+> 依赖表只列已在用的三家；`install.sh` 以**目录探测**决定安装目标（`~/.zcode`、`~/.pi/agent` 等存在即会被选中），本机没有的工具不会被写入。
+
 ## 快速上手
 
 ```bash
