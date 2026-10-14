@@ -135,7 +135,7 @@ AI:  执行操作 → 回报结果
 
 1. **来源盘点**：确认来源形态与规模（旧库目录 / 项目 `resource/`（旧名 references|design|archive）/ 笔记目录 / 导出文件），对照 INDEX 现有登记防重复
 2. **核心知识识别**：高频/知识最丰富者优先，一次 1-3 个模块
-3. **蒸馏建卡**（先定种类再选用途，SCHEMA §卡片身份）：**聚合卡** `templates/card-aggregate.md`（八段；若干紧密相关的知识要分别成卡时，它就是这批卡的**总组织**）；**独立卡**按用途选模板——轨迹卡 `templates/card-track.md` / 实测卡 `templates/card-measurement.md` / 问题说明卡 `templates/card-issue.md` / 设计说明卡 `templates/card-design.md` / 随笔卡 `templates/note-general.md` / 审查卡与机制·手册·流程类走**自由骨架**（无模板）。
+3. **蒸馏建卡**（**先定用途**——种类由内容推导，SCHEMA §卡片身份）：**聚合卡** `templates/card-aggregate.md`（八段；若干紧密相关的知识要分别成卡时，它就是这批卡的**总组织**）；**独立卡**按用途选模板——轨迹卡 `templates/card-track.md` / 实测卡 `templates/card-measurement.md` / 问题说明卡 `templates/card-issue.md` / 设计说明卡 `templates/card-design.md` / 随笔卡 `templates/note-general.md` / 审查卡与机制·手册·流程类走**自由骨架**（无模板）。
    - 模块边界：search_files 确认文件清单
    - 素材：memory + 来源文档 + 代码验证
    - 卡片是「导航 + 核心事实」，细节指向来源/现有 references（相关卡片段），不搬运全文
@@ -270,9 +270,9 @@ INDEX 条目数、已入驻项目、知识文件数。
 
 ## 知识文件模板（种类 / 用途 × 模板）
 
-**先定种类（聚合卡 / 独立卡），再定用途**——用途决定用哪个模板；`type` 只区分**有没有约定骨架**（有 → `card`，自由骨架 → `note`）：
+**先定用途**（种类由内容推导：谈对象 = 独立卡，谈聚合 = 聚合卡）——用途决定用哪个模板；`type` 只区分**有没有约定骨架**（有 → `card`，自由骨架 → `note`）：
 
-| 种类 | 用途 | 模板 | type |
+| 呈现 | 用途 | 模板 | type |
 |------|------|------|------|
 | **聚合卡** | 八段：模块边界 / 职责描述 / 架构设计 / 技术栈 / 代码规范 / 配置命令 / 模块间关系 / 相关 | `templates/card-aggregate.md` | card |
 | 独立卡 | 轨迹卡（范围与依据 / 一句话 / 保留 / 拆除 / 否决 / 仅测量 / 未定 / 当前快照 / 卡间索引 / 聚合卡演化与退出标注 / 相关） | `templates/card-track.md` | card |
@@ -310,7 +310,7 @@ INDEX 条目数、已入驻项目、知识文件数。
 
 - 宪法（与 SKILL.md 平级，唯一真相源）：`SCHEMA.md`（随安装拷贝）
 - init 模板（建库）：`templates/index.md`
-- 卡片模板（生成卡：先定种类——聚合卡 / 独立卡——再定用途）：`templates/card-aggregate.md`（聚合卡）、`templates/card-track.md`（独立·轨迹卡）、`templates/card-measurement.md`（独立·实测卡）、`templates/card-issue.md`（独立·问题说明卡）、`templates/card-design.md`（独立·设计说明卡）、`templates/note-general.md`（独立·随笔卡）；审查卡与机制·手册类走自由骨架（无模板）
+- 卡片模板（生成卡：**先定用途**；聚合卡 / 独立卡由内容推导）：`templates/card-aggregate.md`（聚合卡）、`templates/card-track.md`（独立·轨迹卡）、`templates/card-measurement.md`（独立·实测卡）、`templates/card-issue.md`（独立·问题说明卡）、`templates/card-design.md`（独立·设计说明卡）、`templates/note-general.md`（独立·随笔卡）；审查卡与机制·手册类走自由骨架（无模板）
 - **自检脚本**：`scripts/qwiki-check.py`（SCHEMA/SKILL 各项约定的可执行版；只读、仅需 python3 标准库，PyYAML 可选）
 - **发布前脱敏检查**（发布本仓时用，不是知识库操作）：`scripts/publish-check.py`（扫真实项目代号 / 内网 IP / MAC / 长 hash / 凭据 / 本机路径）+ `scripts/hooks/pre-push`（`git config core.hooksPath scripts/hooks` 启用，命中即拒绝推送）
 - hook 脚本（自发生长事件驱动，四 hook 工具兼容 + pi 扩展）：`scripts/knowledge-sediment-lib.sh`（归一化层）+ `scripts/knowledge-sediment-hint.sh`、`scripts/knowledge-sediment-toolcheck.sh`、`scripts/knowledge-sediment-inject.sh`、`scripts/knowledge-sediment-subagent.sh`（ZCode 无 SubagentStop，不注册该项）；pi 适配见 `~/.pi/agent/extensions/qwiki-sediment.ts`（无 hook，事件映射同协议）
