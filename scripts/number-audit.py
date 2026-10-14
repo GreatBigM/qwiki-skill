@@ -37,12 +37,13 @@
 
 单位表：`%` `张` `条` `行` `处` `跳` `个` `次` `位` `对` `卡` `倍` `×`，以及 `N/M`
 
-自审实测到的三条边界（取舍，已知）:
-    ⓐ **口径必须与它描述的数字在同一个列表项 / 引用块内**——写成独立段落会被判裸数字
-       （假阳性）。把它当**书写规范**：数字和它的口径写在一起。
+自审实测到的边界（取舍，已知）:
+    ⓐ **口径要与数字同属一个语法单位**——同一个列表项（含其子项）、同一段（无空行的续行 /
+       懒续行）、或同一个引用块。**空行会切断归属**（跨空行的独立段落不被认作该数字的口径）：
+       这是有意的——否则"段落级"豁免会把连坐放大回去。
     ⓑ **限定词是可绕过的**：数字前加 `≥` / `至少` 即免检，所以这一类的豁免**一律报提示**
        （qualifier），让旁路可见；项 / 页 / 次每时 / 0-1 条 属真结构性计数，不提示。
-    ⓒ `N/M` 形过宽：`95/95`（测量）与 `4/5`（轮次）同形，后者会被判裸数字。文里少用即无碍。
+    ⓒ `N/M` 只认**两侧各 ≥2 位**（`95/95` 是测量；`4/5` 这类轮次分数不是）。
 
 覆盖范围（取舍，不是缺陷）：只扫 SCHEMA.md / README.md / SKILL.md。
     CHANGELOG 是带日期的记录（数字本就该落在那里）；references/ 与 templates/ 未纳入。
@@ -59,7 +60,7 @@ SCAN = ["SCHEMA.md", "README.md", "SKILL.md"]
 NUM = re.compile(
     r"(?<![\w.])\d+\s*(?:张|条|行|处|跳|个|次|位|对|卡)"
     r"|(?<![\w.])\d+(?:\.\d+)?\s*(?:%|倍|×)"
-    r"|(?<![\w.])\d+\s*/\s*\d+"
+    r"|(?<![\w.])\d{2,}\s*/\s*\d{2,}"
 )
 DATE = re.compile(r"20\d\d-\d\d-\d\d")
 
@@ -102,8 +103,14 @@ def mask_code(text):
     return raw, code
 
 
+def is_block_start(line):
+    """新块起始（列表项 / 引用 / 标题 / 表格 / 分隔线）—— 懒续行判定用。"""
+    s = line.lstrip()
+    return bool(re.match(r"(?:[-*+>#|]\s|\d+\.\s|---)", s))
+
+
 def scopes(raw, code):
-    """每条口径行 → 它豁免的行号集合（列表项子树 / 引用块）。"""
+    """每条口径行 → 它豁免的行号集合（列表项子树 / 引用块，含 Markdown 懒续行）。"""
     out = []
     for i, ln in enumerate(raw):
         if code[i] or not is_decl(ln):
@@ -124,14 +131,22 @@ def scopes(raw, code):
             if indent_of(raw[j]) < ind:
                 head = j
                 break
+            if indent_of(raw[j]) == ind and not is_block_start(raw[j]):
+                head = j        # 同一段的续行（无空行分隔 ⇒ Markdown 里属同一段）
+                break
+            if indent_of(raw[j]) == ind and is_block_start(raw[j]) and not is_block_start(ln):
+                head = j        # 口径行是上一列表项的**懒续行**（无空行分隔）
+                break
             j -= 1
         base = indent_of(raw[head])
         scope = {head, i}
         k = head + 1
         while k < len(raw) and raw[k].strip() != "" and not code[k]:
-            if indent_of(raw[k]) <= base:
-                break             # 同级（或更浅）⇒ 本列表项到此为止
-            scope.add(k)          # 只收**更深缩进**的行 = 本项自己的子树
+            deeper = indent_of(raw[k]) > base
+            lazy = (not is_block_start(raw[k])) and indent_of(raw[k]) <= base
+            if not (deeper or lazy):
+                break           # 同级（或更浅）的新块 ⇒ 本列表项到此为止
+            scope.add(k)
             k += 1
         out.append(scope)
     return out
@@ -218,6 +233,12 @@ SELF_TEST = [
     ("- 当前 v4 卡片体系下的迁移规则\n", set(), "★ 版本前缀 v4 不得被当成「4 卡」"),
     ("- **口径（2026-10-14 实测）**：无关说明\n- 另一项\n  - 子项里 186 张卡\n", {"186 张"},
      "★ 兄弟项的子项不得被上一个口径行吞掉（v3 首版作用域循环写错，实测假阴性）"),
+    ("- 某段 86 张卡\n口径：（86 张卡 = 该段根层 .md 数，2026-10-14 实测）\n", set(),
+     "★ 无空行的口径行是上一列表项的懒续行（CommonMark 语义）⇒ 覆盖该列表项"),
+    ("- 有效轮 4/5（负载态）\n", set(), "★ 小分数不是 `N/M` 计数（判据收窄为两侧各 ≥2 位）"),
+    ("- 回链 95/95 全绿\n", {"95/95"}, "★ 两位 `N/M` 仍是测量，须带口径"),
+    ("全库 186 条关系，口径如下\n口径：（186 条 = 双链边数，2026-10-14 实测）\n", set(),
+     "★ 无空行的口径行与上一行属同一段 ⇒ 覆盖该段"),
     ("- **聚合卡承担中转**：61 张子卡 1830 对\n  - **口径（2026-10-14 实测）**：子卡 = 正文段列出的独立卡\n"
      "- 另一条无关的：全库 190 卡\n", {"190 卡"},
      "★ 块级连坐回归：口径行只覆盖它所属的列表项，同块另一列表项的数字照查"),
