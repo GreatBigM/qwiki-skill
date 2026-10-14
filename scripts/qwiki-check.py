@@ -10,14 +10,13 @@
 - **不依赖 PyYAML**（除「YAML 可解析」一项，缺库时该项跳过并标注）——
   自检工具本身不该因为别人的环境少个包就跑不起来。
 - 判定口径全部来自 SCHEMA：卡片集 = `personal/*.md` + `projects/<项目>/**/*.md`，
-  排除 `resource/`（素材）、`scripts/`、`spec.md`。
+  排除 `resource/`（素材）、`scripts/`（根层 .md 一律视为卡片——2026-10-13 起无例外）。
 """
 import os
 import re
 import sys
 
 SKIP_DIRS = {"resource", "scripts", ".git"}
-SKIP_FILES = {"spec.md"}
 H1_RE = re.compile(r"^# (.+)$", re.M)
 FM_RE = re.compile(r"^---\n(.*?)\n---\n", re.S)
 LINK_RE = re.compile(r"\[\[([^\]|\n]+?)(?:\|[^\]\n]*)?\]\]")
@@ -36,7 +35,7 @@ def card_files(root):
             out += [
                 os.path.relpath(os.path.join(dp, f), root)
                 for f in fn
-                if f.endswith(".md") and f not in SKIP_FILES
+                if f.endswith(".md")
             ]
     return sorted(out)
 
@@ -121,7 +120,7 @@ def check_card_headers(root, cards, rows):
         if summary_line(body) is None:
             bad.append(f"{rel}: H1 后第一个非空块不是 `>` 引言行")
         if not re.search(r"(?m)^>\s*\**\s*(依据|状态)", body):
-            bad.append(f"{rel}: 缺 `> 依据`（覆盖型）或 `> 状态`（追加型）")
+            bad.append(f"{rel}: 缺 `> 依据`（有版本可对）或 `> 状态`（账本 / 记录类）")
     return "卡片头部（H1 首位 / `>` 引言行 / 依据·状态）", not bad, bad
 
 
@@ -211,8 +210,56 @@ def check_naming(root, cards, rows):
     return "命名约定（字符集 / 日期位置）", not bad, bad
 
 
+def check_slug_unique(root, cards, rows):
+    """slug 全库唯一（§命名约定 3）：同名族（同一角色在多项目各有一张）一律加项目前缀。
+
+    `[[slug]]` 靠 slug 解析，而解析处 `tgt.split("/")[-1]` 落进一个**集合**——
+    重名在链接解析里是**静默**的：两边都"解析成功"，入链、网视图、轨迹卡归属
+    却全指向不明。所以单列一条断言（2026-10-13：两个项目各有一张
+    aic8800-wifi-driver.md，全靠人工跑全库双链图才挖出来）。
+    """
+    seen = {}
+    for rel in cards:
+        seen.setdefault(os.path.splitext(os.path.basename(rel))[0], []).append(rel)
+    bad = [
+        f"slug「{s}」重复 {len(ps)} 处：{' ｜ '.join(ps)} —— 同名族族内一律加项目前缀（如 `<项目>-{s}`）；"
+        f"指向它的 [[{s}]] 目前解析不明"
+        for s, ps in sorted(seen.items()) if len(ps) > 1
+    ]
+    return "slug 全库唯一（同名族加项目前缀）", not bad, bad
+
+
+def check_upward_links(root, cards, rows):
+    """检索双向可达：聚合卡**在正文段里列出的**独立卡子卡，须有一条链接指回它。
+
+    组织面天生是"聚合卡挂子卡"的单向可见；不补上行边，检索从细节命中后就回不去
+    （只能退回 INDEX 重查）。判据只认**正文段（`## 相关` 之前）**里列出的子卡——
+    聚合卡「相关」段里的横向引用不算挂载（那是直链）。上行边的措辞不校验。
+    """
+    kinds, out_all, declared = {}, {}, {}
+    for rel in cards:
+        text = open(os.path.join(root, rel), encoding="utf-8").read()
+        slug = os.path.splitext(os.path.basename(rel))[0]
+        body = split(text)[1]
+        kinds[slug] = "聚合卡" if re.search(r"(?m)^##\s*.*(模块边界|职责描述)", body) else "独立卡"
+        out_all[slug] = {m.group(1).strip().split("/")[-1]
+                         for m in LINK_RE.finditer(strip_code(text))}
+        head = re.split(r"(?m)^##\s*相关\s*$", strip_code(body), maxsplit=1)[0]
+        declared[slug] = {m.group(1).strip().split("/")[-1] for m in LINK_RE.finditer(head)}
+    bad = []
+    for a, kind in kinds.items():
+        if kind != "聚合卡":
+            continue
+        for c in sorted(declared[a] - {a}):
+            if kinds.get(c) != "独立卡":
+                continue
+            if a not in out_all.get(c, set()):
+                bad.append(f"[[{c}]] 是聚合卡 [[{a}]] 正文里列出的子卡，但没有上行边（检索回不去）")
+    return "检索双向可达（聚合卡子卡有上行边）", not bad, bad
+
+
 def check_track_ownership(root, cards, rows):
-    """每张轨迹卡（§A~§E 裁决账）的入链里至少 1 张模块卡。"""
+    """每张轨迹卡（§A~§E 裁决账）的入链里至少 1 张聚合卡。"""
     modules, tracks, inbound = set(), [], {}
     for rel in cards:
         body = split(open(os.path.join(root, rel), encoding="utf-8").read())[1]
@@ -227,7 +274,7 @@ def check_track_ownership(root, cards, rows):
             inbound.setdefault(m.group(1).strip().split("/")[-1], set()).add(
                 os.path.splitext(os.path.basename(rel))[0]
             )
-    bad = [f"轨迹卡 [[{t}]] 的入链里没有模块卡 —— 这条线缺一张模块卡"
+    bad = [f"轨迹卡 [[{t}]] 的入链里没有聚合卡 —— 这条线缺一张聚合卡"
            for t in tracks if not (inbound.get(t, set()) & modules)]
     return f"轨迹卡归属（{len(tracks)} 张）", not bad, bad
 
@@ -280,6 +327,8 @@ CHECKS = [
     check_links,
     check_material_paths,
     check_naming,
+    check_slug_unique,
+    check_upward_links,
     check_track_ownership,
     check_material_no_header,
     check_yaml,
