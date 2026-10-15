@@ -360,6 +360,57 @@ def check_yaml(root, cards, rows):
     return f"YAML 头可解析（{n} 个带头文件）", not bad, bad
 
 
+ROLE_WORDS = {
+    # 结构 / 状态
+    "system", "workspace", "design", "line", "ledger",
+    # 手册 / 规约 / 方法论
+    "manual", "conventions", "anti-patterns", "rules", "guide", "workflow", "method", "playbook",
+    # 一次性记录（配日期前缀）
+    "review", "audit", "ab", "regression", "closure", "profile", "baseline", "pitfalls",
+}
+ONE_OFF_ROLES = {"review", "audit", "ab", "regression", "closure", "profile", "pitfalls"}
+
+
+def naming_hints(root, cards, rows):
+    """命名形态提示（**不计入断言、不影响退出码**）：角色词位置 / 一次性角色带日期 / 同族前缀齐否。
+
+    规则见 SCHEMA §命名约定 规则 4；提示只报不改，由 §sync 时逐条判断。
+    """
+    out = []
+    names = {rel: os.path.basename(rel)[:-3] for rel in cards}
+    pd = os.path.join(root, "projects")
+    projs = {d for d in os.listdir(pd) if os.path.isdir(os.path.join(pd, d))} if os.path.isdir(pd) else set()
+    for rel, n in sorted(names.items()):
+        toks = [t for t in n.split("-") if t]
+        if not toks:
+            continue
+        last = toks[-1]
+        mid_rec = [t for t in toks[:-1] if t in ONE_OFF_ROLES and t != "ab"]   # 只对「记录类」角色报错位；`ab` 常作名词（AB 槽位）故豁免
+        if last not in ROLE_WORDS and mid_rec:
+            out.append(f"{rel}: 记录角色 {mid_rec} 不在末位 —— 按 `<YYYYMMDD>-<主题>-<角色>` 把角色移到末位（限定语并入主题位）")
+        elif last in ONE_OFF_ROLES and not re.match(r"^\d{8}-", n):
+            out.append(f"{rel}: 角色 `{last}` 属一次性记录，按规则 2/4 应带 `<YYYYMMDD>-` 前缀")
+    # 跨项目同族前缀齐否（族 = 去掉项目前缀后的「核心名」，须以角色词收尾）
+    fam = {}
+    for rel, n in names.items():
+        proj = rel.split("/")[1] if rel.startswith("projects/") else None
+        base = re.sub(r"^\d{8}-", "", n)
+        pref = proj.replace("_", "-") if proj in projs else None
+        has_pref = bool(pref and base.startswith(pref + "-"))
+        core = base[len(pref) + 1:] if has_pref else base
+        if core.split("-")[-1] not in ROLE_WORDS:
+            continue
+        fam.setdefault(core, []).append((proj, has_pref, rel))
+    for core, items in sorted(fam.items()):
+        if len({p for p, _, _ in items}) < 2:
+            continue
+        lacking = [rel for p, hp, rel in items if p and not hp]
+        have = [rel for p, hp, rel in items if hp]
+        if lacking and have:
+            out.append(f"同族 `{core}` 前缀不齐：{'；'.join(lacking)}（同族其余带项目名前缀，如 {have[0]}）")
+    return out
+
+
 CHECKS = [
     check_card_headers,
     check_index_projection,
@@ -395,6 +446,13 @@ def main(argv):
                 print(f"      … 另 {len(detail) - 20} 条")
         if not ok:
             failed += 1
+    hints = naming_hints(root, cards, rows)
+    if hints and not quiet:
+        print(f"\n提示（不计失败 —— 命名形态建议，规则见 SCHEMA §命名约定 规则 4）")
+        for h in hints[:20]:
+            print(f"    · {h}")
+        if len(hints) > 20:
+            print(f"    … 另 {len(hints) - 20} 条")
     print()
     print("全部通过" if not failed else f"{failed} 项未通过 —— 按 SKILL §sync 处置")
     return 1 if failed else 0
