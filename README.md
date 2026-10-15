@@ -95,7 +95,7 @@ qwiki-skill/
 ├── SCHEMA.md                        ← 宪法（知识库目标态的唯一真相源，随安装拷贝）
 ├── templates/                       ← index / card-aggregate / card-track / card-measurement / card-issue / card-design / note-general 七模板
 ├── references/                      ← agent-hook（hook 机制 + 各家注册表：Hermes/Claude/Codex/ZCode，pi 走扩展）
-└── scripts/                         ← qwiki-check.py（库自检，11 项断言）+ publish-check.py（发布前脱敏）+ number-audit.py（宪法与对外文档不得含实测数字）+ 四 hook 脚本 + hooks/pre-push（三项检查都跑）
+└── scripts/                         ← qwiki-check.py（库自检，11 项断言）+ publish-check.py（发布前脱敏）+ number-audit.py（宪法与对外文档不得含实测数字）+ 四 hook 脚本 + hooks/pre-push（四项都跑：自检 / 脱敏 / 数字 / CHANGELOG 同步）
 ```
 
 ## 模型（一张图）
@@ -117,7 +117,7 @@ qwiki-skill/
     resource/ = 附件          ↕ 跨族边（聚合卡⇄聚合卡）
 ```
 
-- **对象**：卡片（= 知识，最小单元）/ 素材 / 脚本 / INDEX / 目录。**卡片只有一种**——「聚合卡」不是子类型，而是**同一张卡在内容上的呈现**：谈对象的是独立卡，谈"若干卡如何聚合"（元知识）的是聚合卡；**没有声明字段，由内容推导**
+- **实体**：卡片（= 知识，最小单元）/ 素材 / 脚本 / INDEX / 目录。**卡片只有一种**——「聚合卡」不是子类型，而是**同一张卡在内容上的呈现**：谈对象的是独立卡，谈"若干卡如何聚合"（元知识）的是聚合卡；**没有声明字段，由内容推导**
 - **三个面正交**：存档（目录管归属）／组织关系（双链 + 聚合卡管）／检索入口（INDEX 管），信息不复制
 - **三种边**：挂载边（为连通，子卡 ⇄ 聚合卡）／直链（为语义）／跨族边（为跨线）
 - **一个入口**：INDEX 是三个面的唯一入口（漏登记 = 不存在），但只带节点不带边
@@ -155,7 +155,7 @@ git config core.hooksPath scripts/hooks   # 启用 pre-push 钩子（每个克�
 本仓踩过四次）——一律先写文件（Write）再执行。
 
 **改了技能本体就要写 CHANGELOG**：`pre-push` 现在会比对本次推送改了哪些文件——
-动了 `SKILL.md` / `SCHEMA.md` / `templates/` / `scripts/` 之一却没动 `CHANGELOG.md`，直接拒推。
+动了 `SKILL.md` / `SCHEMA.md` / `install.sh` / `templates/` / `references/` / `scripts/` 之一却没动 `CHANGELOG.md`，直接拒推。
 （这条防的仍是"改了实现忘了记录"：本版曾一次性补记六笔漏条目。）
 
 ## License
