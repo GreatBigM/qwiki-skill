@@ -1,6 +1,7 @@
 # Hook 机制（qwiki 自发生长基础设施，跨工具）
 
 > 2026-08-02 定稿，2026-08-18 增 ZCode，2026-08-28 增 pi。qwiki 知识自动生成的事件驱动层——hook 是触发器（写标记/注入指令），沉淀是 AI 的活（加载本 skill 执行）。多工具（Hermes/Claude Code/Codex/ZCode/pi）同构，payload 差异由 `scripts/knowledge-sediment-lib.sh` 归一化（pi 走原生 TypeScript 扩展 `qwiki-sediment.ts`，不经过 shell 脚本），工具判定与输出协议由 `sediment_detect_tool` 承担（注册命令第 1 参为工具名）。
+> **受体现状（2026-10-15）**：本机现行受体 = **Hermes + Claude**；`codex` 未安装 / `pi` 未安装 / ZCode 已卸载。下述 Codex / ZCode / pi 条目（注册表与事件列）**保留为分发兼容说明**——`install.sh` 按目录探测自动跳过不存在的受体。
 
 ## 原理：为什么用 hook 不用 SOUL
 

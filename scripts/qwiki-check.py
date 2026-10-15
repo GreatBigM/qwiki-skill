@@ -98,7 +98,13 @@ def index_rows(root):
 
 
 def resolve(root, key):
-    """INDEX 的「文件」列 → 知识库内的真实相对路径。"""
+    """INDEX 的「文件」列 → 知识库内的真实相对路径。
+
+    文件列规范：`<项目>/<slug>.md` / `personal/<slug>.md` / `common/<slug>.md`
+    （**不写 `projects/` 前缀**）——前缀式由调用方单列断言报错，这里先归一（只按 canonical key 映射）。
+    """
+    if key.startswith("projects/"):
+        key = key[len("projects/"):]
     for cand in (key, "projects/" + key):
         if os.path.exists(os.path.join(root, cand)):
             return cand
@@ -112,6 +118,9 @@ def check_card_headers(root, cards, rows):
     bad = []
     for rel in cards:
         fm, body = split(open(os.path.join(root, rel), encoding="utf-8").read())
+        if fm is None:
+            bad.append(f"{rel}: 无 YAML 头（不变量「有头 ⇔ 是卡片」：补头，或移位到 resource/）")
+            continue
         lines = body.split("\n")
         k = next((i for i, l in enumerate(lines) if l.strip()), None)
         if k is None or not lines[k].startswith("# "):
@@ -121,6 +130,8 @@ def check_card_headers(root, cards, rows):
             bad.append(f"{rel}: H1 后第一个非空块不是 `>` 引言行")
         if not re.search(r"(?m)^>\s*\**\s*(依据|状态)", body):
             bad.append(f"{rel}: 缺 `> 依据`（有版本可对）或 `> 状态`（账本 / 记录类）")
+        for m in re.finditer(r"(?m)^##\s*(关联|参考|参见|相关链接|互链)\s*$", body):
+            bad.append(f"{rel}: 相关段标题须为 `## 相关`（现为 {m.group(0).strip()}）")
     return "卡片头部（H1 首位 / `>` 引言行 / 依据·状态）", not bad, bad
 
 
@@ -128,6 +139,8 @@ def check_index_projection(root, cards, rows):
     """INDEX 两列 = 卡片集的正投影；一卡一行。"""
     bad, seen = [], set()
     for r in rows:
+        if r["key"].startswith("projects/"):
+            bad.append(f"INDEX:{r['line']} 文件列带 `projects/` 前缀（应写 `<项目>/<slug>.md`，省略前缀）")
         rel = resolve(root, r["key"])
         if rel is None:
             bad.append(f"INDEX:{r['line']} 文件列指向不存在的文件（{r['key']}）")
@@ -137,6 +150,10 @@ def check_index_projection(root, cards, rows):
         seen.add(rel)
         fm, body = split(open(os.path.join(root, rel), encoding="utf-8").read())
         t, s = fm_field(fm, "title"), summary_line(body)
+        sy = fm_field(fm, "summary")
+        if sy and s and sy != s:
+            bad.append(f"INDEX:{r['line']} YAML `summary` ≠ 正文 `>` 引言行（三处同串）\n"
+                       f"      summary: {sy[:60]}\n      `>`    : {s[:60]}")
         if t and r["title"] != t:
             bad.append(f"INDEX:{r['line']} 标题列 ≠ 卡片 title\n      INDEX: {r['title'][:60]}\n      title: {t[:60]}")
         if s and r["summary"] != s:
@@ -157,6 +174,16 @@ def check_index_clean(root, cards, rows):
             bad.append(f"INDEX:{r['line']} 死链（{r['key']}）")
         if r["summary"].startswith(("#", "|", "!")) or len(r["summary"]) > 80:
             bad.append(f"INDEX:{r['line']} 总结列异常（{len(r['summary'])} 字符，应以摘要开头且 ≤80）")
+    # 段头须属 {## personal, ## common, ## <projects 实际目录名>}（SCHEMA §INDEX 登记规则）
+    pd = os.path.join(root, "projects")
+    allowed = {"personal", "common"} | (
+        {d for d in os.listdir(pd) if os.path.isdir(os.path.join(pd, d))} if os.path.isdir(pd) else set())
+    idx = os.path.join(root, "INDEX.md")
+    if os.path.exists(idx):
+        for ln, line in enumerate(open(idx, encoding="utf-8"), 1):
+            m = re.match(r"^##\s+(\S.*?)\s*$", line)
+            if m and m.group(1) not in allowed:
+                bad.append(f"INDEX:{ln} 段头 `## {m.group(1)}` 不在 {{personal / common / <项目目录名>}} 之列")
     return "INDEX 纯度（只登记卡片 / 无死链 / 摘要长度）", not bad, bad
 
 
@@ -167,9 +194,12 @@ def check_links(root, cards, rows):
     for rel in cards:
         t = strip_code(open(os.path.join(root, rel), encoding="utf-8").read())
         for m in LINK_RE.finditer(t):
-            tgt = m.group(1).strip().split("/")[-1]
-            if tgt not in slugs:
-                bad.append(f"{rel} → [[{m.group(1).strip()}]] 不是卡片")
+            raw = m.group(1).strip()
+            if "/" in raw:
+                bad.append(f"{rel} → [[{raw}]] 带项目前缀（已全库归一为 [[slug]]）")
+                continue
+            if raw not in slugs:
+                bad.append(f"{rel} → [[{raw}]] 不是卡片")
     return "双链只连卡片（死链 / 指素材）", not bad, bad
 
 
@@ -184,10 +214,10 @@ def check_material_paths(root, cards, rows):
     bad = []
     for rel in cards:
         t = open(os.path.join(root, rel), encoding="utf-8").read()
-        for m in re.finditer(r"`([a-z0-9_]+/resource/[^`]+)`", t):
+        for m in re.finditer(r"`([a-z0-9_-]+/resource/[^`]+)`", t):
             if not os.path.exists(os.path.join(root, "projects", m.group(1))):
                 bad.append(f"{rel}: 素材路径不存在 `{m.group(1)}`")
-        for m in re.finditer(r"`([a-z0-9_]+)/(references|design|archive|change|data)/([^`]+)`", t):
+        for m in re.finditer(r"`([a-z0-9_-]+)/(references|design|archive|change|data)/([^`]+)`", t):
             if m.group(1) not in projects:
                 continue  # 代码仓路径（0_workbench/… 等），不是 qwiki 素材
             bad.append(f"{rel}: 旧目录名 `{m.group(0)}`（应 {m.group(1)}/resource/）")
@@ -309,14 +339,24 @@ def check_yaml(root, cards, rows):
         for f in fn:
             if not f.endswith(".md"):
                 continue
+            rel = os.path.relpath(os.path.join(dp, f), root)
             fm, _ = split(open(os.path.join(dp, f), encoding="utf-8").read())
             if fm is None:
                 continue
             n += 1
             try:
-                yaml.safe_load(fm)
+                data = yaml.safe_load(fm)
             except Exception as e:
-                bad.append(f"{os.path.relpath(os.path.join(dp, f), root)}: {str(e)[:60]}")
+                bad.append(f"{rel}: {str(e)[:60]}")
+                continue
+            if not isinstance(data, dict):
+                continue
+            for key in ("title", "type", "date"):
+                if not data.get(key):
+                    bad.append(f"{rel}: YAML 头缺必填键 `{key}`（title / type / date 三必填）")
+            tv = data.get("type")
+            if tv is not None and str(tv).strip() not in ("note", "card"):
+                bad.append(f"{rel}: `type` 值 `{tv}` 不在 note|card 值域")
     return f"YAML 头可解析（{n} 个带头文件）", not bad, bad
 
 

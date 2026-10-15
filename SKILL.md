@@ -1,7 +1,7 @@
 ---
 name: qwiki
 description: 个人知识库管理：卡片索引、知识沉淀、自动检索，AI 替你积累项目经验。
-version: 2.12.7
+version: 2.12.8
 author: GreatBigM
 license: MIT
 category: knowledge
@@ -67,11 +67,12 @@ AI:  执行操作 → 回报结果
 3. 创建 INDEX.md（按 `templates/index.md` 模板生成：空表 + personal 分区 + 维护规则脚注）
 4. `cd ~/qwiki && git add -A && git commit -m "init qwiki"`
 5. **hook 注册检测**（自发生长事件驱动层，跨工具通用）：
-   - 检测当前工具（Hermes `~/.hermes/config.yaml` / Claude `~/.claude/settings.json` / Codex `~/.codex/hooks.json` / ZCode `~/.zcode/cli/config.json` / pi `~/.pi/agent/extensions/qwiki-sediment.ts`）
+   - 检测当前工具（**本机仅 Hermes / Claude**——`~/.hermes/config.yaml` / `~/.claude/settings.json`；受体现状与其余工具的兼容说明见下方「跨工具说明」）
    - 检查该工具 hooks 是否已注册 knowledge-sediment 脚本（session_end/stop + post_tool + pre_llm；ZCode 无 subagent 事件，注册三项即可；pi 无 hook 机制，由扩展事件映射承接同协议）
    - 缺失 → 提示"知识自动沉淀依赖 hook 事件驱动（每轮检索引导 + 代码修改即时感知 + 会话结束补沉淀）。是否注册？"→ Y → 按 `references/agent-hook.md` 的注册表配置 + 复制 `scripts/knowledge-sediment-*.sh` 到工具 scripts 目录
 
 > **跨工具说明**：知识库本体（~/qwiki/）与工具无关，任何 agent（Hermes / Claude Code / Codex / ZCode / pi）都能读写。事件驱动层多工具同构（Hermes/Claude/Codex/ZCode 走 hook，脚本 `scripts/knowledge-sediment-lib.sh` 按工具分支归一化事件名与输出协议；pi 无 hook，由 `~/.pi/agent/extensions/qwiki-sediment.ts` 扩展把同一标记协议接到 pi 事件模型——before_agent_start 注入检索引导+消费队列 / tool_result 写标记 / session_shutdown 跨会话提醒；标记队列 `${XDG_STATE_HOME:-~/.local/state}/qwiki/sediment/` 跨工具共享），检索引导由 inject.sh 每轮注入（Hermes 走 context，Claude/ZCode 走 hookSpecificOutput.additionalContext）或 hint.sh Stop 门禁注入（Codex/ZCode）——SOUL.md 无需声明检索链（方案 A 定稿，2026-08-02）。
+> **受体现状（2026-10-15）**：本机现行受体 = **Hermes + Claude**；`codex` 未安装 / `pi` 未安装 / ZCode 已卸载。下文 Codex / ZCode / pi 条目**保留为分发兼容说明**——`install.sh` 按目录探测自动跳过不存在的受体，未装即不会被写入（检测清单见 init 步骤 5）。
 
 ---
 
@@ -135,7 +136,7 @@ AI:  执行操作 → 回报结果
 
 1. **来源盘点**：确认来源形态与规模（旧库目录 / 项目 `resource/`（旧名 references|design|archive）/ 笔记目录 / 导出文件），对照 INDEX 现有登记防重复
 2. **核心知识识别**：高频/知识最丰富者优先，一次 1-3 个模块
-3. **蒸馏建卡**（**先定用途**——种类由内容推导，SCHEMA §卡片身份）：**聚合卡** `templates/card-aggregate.md`（八段；若干紧密相关的知识要分别成卡时，它就是这批卡的**总组织**）；**独立卡**按用途选模板——轨迹卡 `templates/card-track.md` / 实测卡 `templates/card-measurement.md` / 问题说明卡 `templates/card-issue.md` / 设计说明卡 `templates/card-design.md` / 随笔卡 `templates/note-general.md` / 审查卡与机制·手册·流程类走**自由骨架**（无模板）。
+3. **蒸馏建卡**（**先定用途**——种类由内容推导，SCHEMA §卡片身份）：**聚合卡** `templates/card-aggregate.md`（八段；若干紧密相关的知识要分别成卡时，它就是这批卡的**总组织**）；**独立卡**按用途选模板——轨迹卡 `templates/card-track.md` / 实测卡 `templates/card-measurement.md` / 问题说明卡 `templates/card-issue.md` / 设计说明卡 `templates/card-design.md` / 随笔卡 `templates/note-general.md` / 审查卡走**候选骨架**（`type: card`）；机制·手册·流程类走自由骨架（`type: note`）。
    - 模块边界：search_files 确认文件清单
    - 素材：memory + 来源文档 + 代码验证
    - 卡片是「导航 + 核心事实」，细节指向来源/现有 references（相关卡片段），不搬运全文
@@ -170,16 +171,20 @@ AI:  执行操作 → 回报结果
 1. 一致性校验（报告修复）：
    - INDEX 死链/漏登记（登记行指向的文件是否存在）
    - **INDEX 两列与卡片不一致**（「标题」列 ≠ 卡片 `title`，「总结」列 ≠ 卡片 `>` 引言行）→ 按卡片回填（INDEX 是卡片集的正投影，见 SCHEMA §INDEX 登记规则）；比对取的是 `>` 块**第一行**，首行误写成引言句时改卡片首行（而非改 INDEX）
+   - **三处同源要当四处查**：`YAML summary` / `>` 引言行 / INDEX 总结列须逐字相同，而自检只比对后两处（标题列 ↔ `title`、总结列 ↔ 引言行）——**`summary` ↔ 引言行此前不在自检面内、会静默漂移（2.12.8 起已纳入自检）**。大改后用一段脚本逐卡比四个串（`title` ↔ 正文 H1、`summary` ↔ `>` 首行、两者 ↔ INDEX 两列），发现不一致就把四处一次改齐；**改名类的字符串也一样**（旧名可能只残留在某一处）
+   - **并行修正轮：投影由父代理单写**（多组子代理并行改卡时）：任务书要写明「子代理不改 INDEX.md」；它们改了某卡 `>` 首行会让「INDEX 正投影」当场红灯，而被禁止改 INDEX 的子代理只能「加注绕过」（把现行名写在第二行），把不一致固化下来 ⇒ 收口顺序固定为**子代理只改卡 → 父代理一次性同步 INDEX 两列 → 跑自检到 11 项全过 → commit**
+   - **派工粒度（一次修几十上百张卡）**：每组 ≤20 张卡 / ≤25 文件，任务书要求 **python 批量改写**（逐卡一条命令必撞子代理工具调用上限，只交付一半）；截断返回的 `not_done` 就是断点接力的输入——按它重派剩余条目（附已备好的 `file:line` 与改法），别让新子代理从零核证
    - **一张卡占了多行**（同一文件在表里出现 ≥2 次）→ 合并为一行，子发现归卡片正文
    - **「总结」列超长**（>80 字符）→ 压到 80 以内（同时改卡片 `>` 行与 YAML `summary`，保三处同源）
    - **命名违规**（SCHEMA §命名约定）：文件名含 `_`/大写/空格、日期写成后缀 `-YYYYMMDD`、同名族前缀不齐（`build-flash-system` 有前缀的没前缀的混着）→ 改名并同步全库 `[[链接]]` 与 INDEX 两列
    - **H1 不在正文首位**（前面还有引言块/表格/标题）→ 把 H1 提上去；顺序错位会污染「H1 后第一行」取摘要的脚本
    - **素材误登 INDEX**（表内出现 `resource/`｜`scripts/` 等素材/脚本路径，或旧名 `references/`｜`design/`）→ 删行（库内变更查 git 历史，不另立档案文件）
    - **素材带头**（`resource/`｜`scripts/` 下的 `.md` 带 YAML 头）→ 删头（不变量：有头 ⇔ 是卡片）；若该文件本已是知识形态（机制梳理 / 方案 / 审查结论），走**升格为卡**——移位到项目根、补 `type: card` 头与 `> 依据`、登记 INDEX，并顺手修掉升格后暴露的 `[[...]]` 死链
+   - **正文里的仓库路径必须可解析**：卡片正文引用的仓库路径须是能 `test -e` 的**真名**（不得用简写，如 `archive/clock` 须展开为 `0_workbench/archive/<批次>/clock`）；有意保留的退役值须**就地标注「已不存在」**，未标注的失效路径才是缺陷
    - **双链死链检测**：扫描全库 `[[...]]` 目标，对照**卡片表**（slug/项目-slug），报告悬空链接；另报「卡片里 `[[...]]` 指向素材」的口径错误（素材只做路径引用，见 skill 根目录 `SCHEMA.md` §知识互联）
 2. **防腐化判定**（按 skill 根目录 `SCHEMA.md` §卡片身份 活知识原则与防腐化判定标准）：
    - 死链清单 → 修正引用
-   - **追加还是覆盖看内容，不看卡种**（SCHEMA §活知识原则）：当下状态（聚合卡现状 / 机制梳理）→ **直接修正**；被推翻的是**"已发出的结论"**（裁决 / 实测读数 / 已被引用的判断）→ **追加修正标注**（轨迹卡走 §H，其它卡追加 `⚠️ 修正` 块），**不静默抹掉、不销毁**
+   - **追加还是覆盖看内容，不看卡种**（SCHEMA §活知识原则）：当下状态（聚合卡现状 / 机制梳理）→ **直接修正**；被推翻的是**"已发出的结论"**（裁决 / 实测读数 / 已被引用的判断）→ **追加修正标注**（轨迹卡走 §H，其它卡**就地**追加 `> ⚠️ 修正（YYYY-MM-DD）：…` 块引用行，紧贴被推翻那句、不抹原文），**不静默抹掉、不销毁**
    - 聚合卡改完只剩当前态，"因为什么决策、改掉哪条、哪条因此过期"记在**该线轨迹卡 §H**——旧结论不得静默删除（该线还没有轨迹卡 ⇒ 这次的"消失的知识"就是建卡的负空间信号）；整卡不可救 → 先留修正标注，再提出销毁建议（确认后删）
    - **零双链入链 = 只由 INDEX 挂载**（不是"未组织"）——聚合卡多一条反向双链就多一条按链浏览的路，有天然来路就补，**不强求**
    - **轨迹卡归属检查**：每张轨迹卡的入链里至少应有 1 张聚合卡；没有 → 报「这条线缺一张聚合卡」
@@ -222,7 +227,7 @@ AI:  执行操作 → 回报结果
 
 - **自动判断模式（自发生长）**：三触发源出现时 AI 直接建卡/更新，不等用户命令——
   ① 验证结论产生（实测/分析出结论）② 重复实践未命中知识点（查 INDEX 无对应卡且实践再现）③ 代码修改后对应卡需更新
-- **hook 事件驱动层**（善用 hook/扩展，任务嵌入事件点，跨工具通用）：`scripts/knowledge-sediment-*.sh` 注册到当前工具 hooks（Hermes config.yaml / Claude settings.json / Codex hooks.json / ZCode `~/.zcode/cli/config.json`，见 `references/agent-hook.md` 注册表）；pi 由 `~/.pi/agent/extensions/qwiki-sediment.ts` 扩展承接（无 hook 机制，事件映射同协议：before_agent_start 注入引导 / tool_result 写标记 / session_shutdown 提醒）——session_end/stop 写标记 / post_tool 信号检测 / pre_llm 每轮注入检索引导+读队列沉淀指令（Codex/ZCode 由 Stop 门禁承担） / subagent_stop 子代理产出（ZCode 无此事件，不注册）——标记写入队列目录（XDG 约定 `${XDG_STATE_HOME:-~/.local/state}/qwiki/sediment/`，定义于 lib.sh），inject 读后即删（Codex/ZCode 由 hint.sh Stop 门禁读后即删）。多工具 payload 经 `scripts/knowledge-sediment-lib.sh` 归一化（一个脚本吃四种 hook 工具：Hermes/Claude/Codex/ZCode），输出协议按工具分支，机制说明见 `references/agent-hook.md`
+- **hook 事件驱动层**（善用 hook/扩展，任务嵌入事件点，跨工具通用）：`scripts/knowledge-sediment-*.sh` 注册到当前工具 hooks（Hermes config.yaml / Claude settings.json / Codex hooks.json / ZCode `~/.zcode/cli/config.json`，见 `references/agent-hook.md` 注册表）；pi 由 `~/.pi/agent/extensions/qwiki-sediment.ts` 扩展承接（无 hook 机制，事件映射同协议：before_agent_start 注入引导 / tool_result 写标记 / session_shutdown 提醒）——session_end/stop 写标记 / post_tool 信号检测 / pre_llm 每轮注入检索引导+读队列沉淀指令（Codex/ZCode 由 Stop 门禁承担） / subagent_stop 子代理产出（ZCode 无此事件，不注册）——标记写入队列目录（XDG 约定 `${XDG_STATE_HOME:-~/.local/state}/qwiki/sediment/`，定义于 lib.sh），inject 读后即删（Codex/ZCode 由 hint.sh Stop 门禁读后即删）。多工具 payload 经 `scripts/knowledge-sediment-lib.sh` 归一化（一个脚本吃四种 hook 工具：Hermes/Claude/Codex/ZCode），输出协议按工具分支，机制说明见 `references/agent-hook.md`（**受体现状见 init §跨工具说明**：本机仅 Hermes/Claude，Codex/ZCode/pi 条目为分发兼容说明）
 - **知识归属路由**（决定卡放哪）：
   - 个人方法论/工作哲学 → `~/qwiki/personal/`
   - 跨项目知识（反模式/通用经验/工具坑，来源项目、适用多项目）→ `~/qwiki/projects/common/`
@@ -231,7 +236,7 @@ AI:  执行操作 → 回报结果
   - 「正文 `>` 行」指 `>` 引文块的**第一行**，内容必须是该摘要原文——自检按「H1 后第一个 `>` 行」取值，把背景/定义句写在第一行会被判「INDEX 总结列 ≠ 卡片 `>` 行」；依据行另起一个 `>` 段落放后面
 - **卡片约束见 skill 根目录 `SCHEMA.md` §公共约定 + §YAML 头公约**（YAML 头 / 一句话结论 / 相关段 / 一张卡一个点 / 卡头自证）——本节不复述，避免两处措辞漂移
 - 正文段落为参考骨架（背景/要点/结论），按需取舍，**不强制 schema**——写什么算什么，后续可随时补充
-- 卡片身份：**卡片只有一种——知识**；「聚合卡 / 独立卡」是同一张卡在内容上的两种**呈现**（谈对象 → 独立卡；谈「若干卡如何聚合」的元知识 → 聚合卡），**没有声明字段、由内容推导**；**独立卡的用途是开放集**（轨迹 / 问题 / 实测 / 设计 / 随笔 / 审查 / 机制·手册…），未来新增卡型都是独立卡。`type` 只表达**用没用模板骨架**（`card` = 有模板，`note` = 自由骨架），**库归属由路径决定**（`personal/` / `projects/`，含 `projects/common/`）；归属由来源决定，**无形态演进、无知识升降级**（失效走「修正」或「留痕」，见 SCHEMA §活知识原则）；跨库归位（归属错误时）由 sync 结构审视处理
+- 卡片身份：**卡片只有一种——知识**；「聚合卡 / 独立卡」是同一张卡在内容上的两种**呈现**（谈对象 → 独立卡；谈「若干卡如何聚合」的元知识 → 聚合卡），**没有声明字段、由内容推导**；**独立卡的用途是开放集**（轨迹 / 问题 / 实测 / 设计 / 随笔 / 审查 / 机制·手册…），未来新增卡型都是独立卡。`type` 只表达**有没有约定骨架**（`card` = 有约定骨架/模板，`note` = 自由骨架），**库归属由路径决定**（`personal/` / `projects/`，含 `projects/common/`）；归属由来源决定，**无形态演进、无知识升降级**（失效走「修正」或「留痕」，见 SCHEMA §活知识原则）；跨库归位（归属错误时）由 sync 结构审视处理
 - 和 import 的区别：note 无项目目录，一条 INDEX 行 + 一个 .md
 - 写完后 `cd ~/qwiki && git add -A && git commit -m "note: <标题>"`
 
@@ -310,9 +315,9 @@ INDEX 条目数、已入驻项目、知识文件数。
 
 - 宪法（与 SKILL.md 平级，唯一真相源）：`SCHEMA.md`（随安装拷贝）
 - init 模板（建库）：`templates/index.md`
-- 卡片模板（生成卡：**先定用途**；聚合卡 / 独立卡由内容推导）：`templates/card-aggregate.md`（聚合卡）、`templates/card-track.md`（独立·轨迹卡）、`templates/card-measurement.md`（独立·实测卡）、`templates/card-issue.md`（独立·问题说明卡）、`templates/card-design.md`（独立·设计说明卡）、`templates/note-general.md`（独立·随笔卡）；审查卡与机制·手册类走自由骨架（无模板）
+- 卡片模板（生成卡：**先定用途**；聚合卡 / 独立卡由内容推导）：`templates/card-aggregate.md`（聚合卡）、`templates/card-track.md`（独立·轨迹卡）、`templates/card-measurement.md`（独立·实测卡）、`templates/card-issue.md`（独立·问题说明卡）、`templates/card-design.md`（独立·设计说明卡）、`templates/note-general.md`（独立·随笔卡）；审查卡走**候选骨架**（`type: card`）、机制·手册类走自由骨架（`type: note`）
 - **自检脚本**：`scripts/qwiki-check.py`（SCHEMA/SKILL 各项约定的可执行版；只读、仅需 python3 标准库，PyYAML 可选）
 - **发布前检查**（发布本仓时用，不是知识库操作）：`scripts/publish-check.py`（扫真实项目代号 / 内网 IP / MAC / 长 hash / 凭据 / 本机路径）+ `scripts/number-audit.py`（宪法与对外文档不得含实测数字——判据原文见该脚本 docstring 的 `CURRENT:` 行，**引用不复制**）+ `scripts/hooks/pre-push`（`git config core.hooksPath scripts/hooks` 启用，**四项都跑**（自检 / 脱敏 / 数字 / CHANGELOG 同步），任一命中即拒绝推送）
-- hook 脚本（自发生长事件驱动，四 hook 工具兼容 + pi 扩展）：`scripts/knowledge-sediment-lib.sh`（归一化层）+ `scripts/knowledge-sediment-hint.sh`、`scripts/knowledge-sediment-toolcheck.sh`、`scripts/knowledge-sediment-inject.sh`、`scripts/knowledge-sediment-subagent.sh`（ZCode 无 SubagentStop，不注册该项）；pi 适配见 `~/.pi/agent/extensions/qwiki-sediment.ts`（无 hook，事件映射同协议）
+- hook 脚本（自发生长事件驱动，四 hook 工具兼容 + pi 扩展）：`scripts/knowledge-sediment-lib.sh`（归一化层）+ `scripts/knowledge-sediment-hint.sh`、`scripts/knowledge-sediment-toolcheck.sh`、`scripts/knowledge-sediment-inject.sh`、`scripts/knowledge-sediment-subagent.sh`（ZCode 无 SubagentStop，不注册该项）；pi 适配见 `~/.pi/agent/extensions/qwiki-sediment.ts`（无 hook，事件映射同协议）——**受体现状见 init §跨工具说明**（本机仅 Hermes/Claude）
 - 参考：`references/agent-hook.md`（hook 机制说明 + 各家注册表）
 - 版本记录：`CHANGELOG.md`（随安装拷贝，记录版本历史）

@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.12.8 (2026-10-15)
+
+### Changed
+- **`type` 语义与实库收口**（Q1）：`SCHEMA.md` 的 `type` 定义由「用没用**模板**骨架」改为「有没有**约定**骨架」——模板骨架 / 约定骨架（审查卡 / 聚合卡 / 实测卡 / 问题说明卡 / 设计说明卡…）→ `card`，自由骨架的随笔 / 方法论 / 反模式 / 工具坑 → `note`；审查卡由「自由骨架」改判为**候选骨架**（落 `type: card`）。`SKILL.md` migrate 步、note 段与模板表同步措辞（审查卡 → 候选骨架 / `card`；机制·手册·流程类 → 自由骨架 / `note`）。实库分布结论（`projects/` 下多 `card`、`personal/` 下多 `note` = 使用习惯非绑定）按「宪法不含实测数字」**只留结论、不留计数**（计数由 `scripts/qwiki-check.py` 一行答出）。
+- **`⚠️ 修正` 块形态与位置入宪**（Q6）：由「正文追加一个 `⚠️ 修正` 块」改为**就地**追加块引用行 `> ⚠️ 修正（YYYY-MM-DD）：原结论「…」不再成立（原因）⇒ 现结论为 …（依据：file:line / commit / 命令）`——紧贴被推翻那句、**不抹原文**；并写明修正行不参与 INDEX 投影（投影只取 H1 后第一条 `>`）。`SKILL.md` sync 段同步一句。
+- **`未标注` 填写口径入宪**（Q7）：定为**最后手段**——先翻卡内锚点（change / 归档目录 / commit / 行号 / 命令输出），确无才写；成批「能标而未标」视为失职。
+- **正文路径必须可解析**（Q8）：`SCHEMA.md` 锚点硬要求补「正文里的仓库路径须为能 `test -e` 的真名、不得用简写；有意保留的退役值须就地标注『已不存在』」；`SKILL.md` sync 段加同款一句。
+- **`templates/index.md` 段序与实库对齐**（Q9）：模板里 `## common` 与 `## personal` 对调（序 = 项目段 → `## personal` → `## common`）；`SCHEMA.md` §INDEX 登记规则补「`personal` 次之、`common` 收尾（顺序固定）」。
+- **受体现状注记**（Q5）：`SKILL.md` / `README.md` / `references/agent-hook.md` 就地标明「本机现行受体 = Hermes + Claude；`codex` / `pi` 未安装、ZCode 已卸载」，Codex / ZCode / pi 条目保留为**分发兼容说明**（`install.sh` 按目录探测自动跳过不存在的受体）。
+
+### Fixed
+- **自检脚本补四条断言**（Q2~Q4 / Q10~Q12，折入既有各项、**总数仍 11**）：`scripts/qwiki-check.py` 增——① 卡片集内 `.md` 无 YAML 头即报错「补头，或移位到 `resource/`」；② `safe_load` 后校验 `title`/`type`/`date` 必填、`type` 值须在 `note|card`（容忍带引号写法）；③ YAML `summary` ≠ 正文 `>` 引言行即报「三处同串」；④ 相关段标题异名为 `关联|参考|参见|相关链接|互链` 时报「须为 `## 相关`」；⑤ 素材路径 / 旧目录名的项目名字符集纳入 `-`；⑥ INDEX 文件列带 `projects/` 前缀、段头越出 `{personal / common / <项目目录名>}`、`[[项目/slug]]` 前缀式双链各列一条断言。
+
+### 说明
+- 版本 2.12.7 → 2.12.8
+
 ## 2.12.7 (2026-10-15)
 
 ### Fixed
