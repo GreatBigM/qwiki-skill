@@ -5,3 +5,6 @@ __pycache__/
 # 编辑器 / 系统杂物
 .DS_Store
 *.swp
+
+# 本机私用脱敏名单（真名不入仓）
+scripts/publish-deny.local

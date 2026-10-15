@@ -1,4 +1,39 @@
 # Changelog
+
+## 2.12.6 (2026-10-15)
+
+### Fixed
+- **脱敏**：`SCHEMA.md` 的文件列举例、`CHANGELOG.md` 历史条目里的代码树路径换占位符（`<项目A>` / `<代码树>`）；本仓闸门对 CHANGELOG 同样扫描 ⇒ 上版条目里用来举例的标识是真实代号，例示改用 `HM####` / `BW###` / 「项目hm####」这类形态占位
+- **概念单一真相源**：`templates/index.md` 曾把 INDEX 登记规则整段复述进模板（其余模板都写「本模板不复述，避免与宪法漂移」）⇒ 收成一行指针，制度口径只留在根目录 `SCHEMA.md`
+- **基数口径统一**：`SCHEMA.md` 实体清单的「对象只有五个」与开头「一个对象（卡片 = 知识）」用法冲突 ⇒ 清单改「实体只有五个」，表头同改
+- **CHANGELOG 结构**：2.4.2 段从文件末归位到 2.5.0 与 2.4.1 之间（保持新→旧降序）
+- **README 与 SKILL 同口径**：`qwiki sync` 说明改为「一致性校验 + 防腐化 + 结构审视」（原「宪法同步检查」是重构前旧词）
+- 版本 2.12.5 → 2.12.6
+
+## 2.12.5 (2026-10-15)
+
+### Fixed
+- **发布闸门 publish-check.py 三个洞同批修**（脱敏反复回潮的根因之一：闸门对真实标识零防护却一直报「干净」）：
+  ① 代号正则大小写不敏感（旧版只认小写，`HM####`/`BW###` 整体漏）；
+  ② 白名单改为**按匹配项豁免**（旧版 `if any(a in line for a in ALLOW): continue` 是整行豁免——一行里出现
+  `<项目A>` 就给同行的真名背书；且原 7 个词对 12 条 pattern 全部零命中 = 纯死豁免）；
+  ③ 词边界改用显式字符类（`\b` 在 str 模式下 `\w` 含汉字 ⇒「项目hm####」这类中文常见写法漏检，
+  加不加空格决定报不报）。另补 PRJ0## / 裸数字代号 / MAC 连字符 / 凭据变体（`token=`、`Bearer`、中文「密码」键）/
+  邮箱 六类形态。
+- **`--self-test` 样本按已知缺陷类别扩容**（原 15 条只覆盖「正常裸值」一档，上述六类一条样本都没有）；
+  自检与扫描共用同一份判定口径（`line_hits`），不再各写一套造成假绿。
+- **`scripts/hooks/pre-push` 在推送路径上先跑 `--self-test`**（规则表被改坏时不得静默通过）；
+  CHANGELOG 名单统一为超集（SKILL / SCHEMA / install.sh / templates / references / scripts，9 仓文本自此一致）；
+  基点改为 `origin/main → gitee/main → 根提交` 三级回落（旧版无 `origin/main` 时回落到 `HEAD~1`，
+  多笔提交一起推会只看最后一笔）。
+- **新增本机私用名单 `scripts/publish-deny.local`**（gitignore、不进仓）：人名 / 昵称 / 厂商 SDK 名 /
+  内部 skill 名这类**无法正则枚举、也不该写进发布仓**的标识，在本机未跟踪文件里逐行列真名，闸门自动一并扫。
+
+### 说明
+- 口径全文见 `scripts/publish-check.py` 文件头（已知边界：长 hash 折行、全角句点 IP 不识别；该文件自身在
+  `SKIP_FILES` 内，改它时需人工核对）。9 仓共用同一份闸门（md5 一致）——改一处必须批量同步。
+- 版本 2.12.4 → 2.12.5
+
 ## 2.12.4 (2026-10-14)
 
 ### Fixed
@@ -483,7 +518,7 @@
 
 ### Changed
 
-- **hook 注入文案加「工作环境」一行**（`scripts/knowledge-sediment-inject.sh`）：代码仓唯一入口 = `/mnt/data/<项目>/CLAUDE.md`、Hermes 侧环境导航 `~/.hermes/AGENTS.md`（配合入口文件定案 09-28：仓内不再放 AGENTS.md）。这是「规约每轮在场」的唯一可控通道
+- **hook 注入文案加「工作环境」一行**（`scripts/knowledge-sediment-inject.sh`）：代码仓唯一入口 = `<代码树>/<项目>/CLAUDE.md`、Hermes 侧环境导航 `~/.hermes/AGENTS.md`（配合入口文件定案 09-28：仓内不再放 AGENTS.md）。这是「规约每轮在场」的唯一可控通道
 - 版本 2.5.1 → 2.5.2
 
 ## 2.5.1 (2026-09-28)
@@ -503,6 +538,13 @@
 - **补 pi 为正式支持的 agent**：SKILL.md「跨工具说明 / hook 注册检测 / 事件驱动层 / hook 脚本」四处、README「跨工具兼容 / 多 agent 目标」两处，全部把 pi 纳入口径
 - **pi 适配机制**：pi 无 hook 机制，由 `~/.pi/agent/extensions/qwiki-sediment.ts` 扩展承接同一标记协议（before_agent_start 注入检索引导+消费队列 / tool_result 写标记 / session_shutdown 跨会话提醒），标记队列 `${XDG_STATE_HOME:-~/.local/state}/qwiki/sediment/` 跨工具共享
 - 版本 2.4.2 → 2.5.0
+
+## 2.4.2 (2026-08-28)
+
+### Added
+
+- install.sh 新增 pi 安装目标（探测 `~/.pi/agent` → 安装到 `~/.pi/agent/skills/<skill>`，pi 自动发现）
+- 版本 2.4.1 → 2.4.2
 
 ## 2.4.1 (2026-08-19)
 
@@ -775,7 +817,7 @@
 
 ### Changed
 - init 流程调整：先 git init 建骨架，最后统一提交（git add + commit 后置）
-- delete 路径脱敏：/mnt/data/<项目> → <代码路径>（通用化，去除内部环境依赖）
+- delete 路径脱敏：<代码树>/<项目> → <代码路径>（通用化，去除内部环境依赖）
 - README 手动复制路径对齐仓库根目录布局（去 skills/qwiki 嵌套）
 
 ## 1.0.0 (2026-07-31)
@@ -785,10 +827,3 @@
 - 仓库根目录即 skill 本体布局，install.sh 一键安装
 - references: spec.md / agents-md-structure.md / codegraph-quickstart.md
 - templates: index.md / routing.md / card.md / note.md
-
-## 2.4.2 (2026-08-28)
-
-### Added
-
-- install.sh 新增 pi 安装目标（探测 `~/.pi/agent` → 安装到 `~/.pi/agent/skills/<skill>`，pi 自动发现）
-- 版本 2.4.1 → 2.4.2

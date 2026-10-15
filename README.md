@@ -78,7 +78,7 @@ qwiki import <项目>     # 新项目入驻：AI 读 SDK → 建项目卡 → �
 qwiki migrate <项目>    # 老知识升级为卡片体系
 qwiki note <标题>       # 随手笔记
 qwiki explore [关键词]  # 知识检索
-qwiki sync              # 日常同步（宪法同步检查 + 索引一致性 + 防腐化判定）
+qwiki sync              # 日常同步（一致性校验 + 防腐化 + 结构审视）
 qwiki status            # 查看知识库状态
 qwiki delete <项目>     # 项目退出
 qwiki deinit            # 全局拆除
