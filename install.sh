@@ -2,7 +2,7 @@
 # qwiki skill 一键安装/更新脚本（多 agent 目标）
 # 用法:
 #   交互选择: curl -fsSL https://gitee.com/GreatBigM/qwiki-skill/raw/main/install.sh -o /tmp/install.sh && bash /tmp/install.sh
-#   指定目标: curl -fsSL https://gitee.com/GreatBigM/qwiki-skill/raw/main/install.sh | bash -s -- --target hermes,claude,zcode,pi
+#   指定目标: curl -fsSL https://gitee.com/GreatBigM/qwiki-skill/raw/main/install.sh | bash -s -- --target hermes,claude,dsh
 #   全部目标: curl -fsSL https://gitee.com/GreatBigM/qwiki-skill/raw/main/install.sh | bash -s -- --all
 # 等价于手动复制，不经过安全扫描。重复执行 = 更新（自动备份旧版 + 版本对比）
 # 镜像: github.com/GreatBigM/qwiki-skill（海外备选）
@@ -12,7 +12,7 @@ REPO_URL="${QWI_SKILL_REPO_URL:-https://gitee.com/GreatBigM/qwiki-skill.git}"
 SKILL_NAME="qwiki"
 COPY_DIRS="templates references scripts"   # 除 SKILL.md/CHANGELOG.md 外需拷贝的目录
 
-get_version() { grep -m1 '^version:' "$1" 2>/dev/null | sed 's/^version:[[:space:]]*//' | tr -d '"'\'' ' || true; }
+get_version() { grep -m1 '^version:' "$1" 2>/dev/null | sed -e 's/^version:[[:space:]]*//' -e "s/[\"'[:space:]]//g" || true; }
 version_gt() { [ "$1" != "$2" ] && [ -n "$2" ] && [ "$(printf '%s\n%s\n' "$2" "$1" | sort -V | head -1)" = "$2" ]; }
 
 # ─── 参数解析 ──────────────────────────────────────────────────────
@@ -40,6 +40,9 @@ detect_targets() {
     if [ -x "$(command -v codex 2>/dev/null)" ]; then TARGETS+=("codex|${HOME}/.codex/skills|Codex"); fi
     if [ -d "${HOME}/.zcode" ]; then TARGETS+=("zcode|${HOME}/.zcode/skills|ZCode"); fi
     if [ -d "${HOME}/.pi/agent" ]; then TARGETS+=("pi|${HOME}/.pi/agent/skills|pi"); fi
+    # DeepSeek Harness (dsh): 原生技能根 = ~/.dsh/skills（user-dsh, rank 400），
+    # 目录包 <name>/SKILL.md 即被发现，frontmatter 需 name(kebab-case) + description
+    if [ -x "$(command -v dsh 2>/dev/null)" ] || [ -d "${HOME}/.dsh" ]; then TARGETS+=("dsh|${HOME}/.dsh/skills|DeepSeek Harness"); fi
     # Cursor 用 skills-cursor 插件结构，暂不支持；其余 agent 未探测到
     if [ "${#TARGETS[@]}" -eq 0 ]; then
         TARGETS+=("hermes|${HOME}/.hermes/skills|Hermes(默认)")
@@ -80,6 +83,10 @@ install_one() {
     fi
 
     mkdir -p "${dest}"
+    # 清理语义（2026-10-22）：副本是纯复制品，先清掉已下线文件，否则删掉的支持文件会永远残留
+    for d in ${COPY_DIRS}; do
+        rm -rf "${dest:?}/${d}"
+    done
     cp "${TMP}/repo/SKILL.md" "${dest}/"
     cp "${TMP}/repo/SCHEMA.md" "${dest}/"
     for d in ${COPY_DIRS}; do
@@ -88,8 +95,9 @@ install_one() {
     cp "${TMP}/repo/CHANGELOG.md" "${dest}/" 2>/dev/null || true
 
     # hook 脚本同步: 工具 hook 注册引用 ~/.<tool>/scripts/, 升级时一并对齐, 防「只装 skill、hook 跑旧脚本」盲区
+    # DSH 无 Claude 式 hooks 配置（扩展面是 cordis 插件），不落 hook 脚本
     hook_dir="${dest_dir%/skills}/scripts"
-    if [ -d "${dest}/scripts" ]; then
+    if [ "${name}" != "dsh" ] && [ -d "${dest}/scripts" ]; then
         mkdir -p "${hook_dir}"
         cp "${dest}"/scripts/knowledge-sediment-*.sh "${hook_dir}/" 2>/dev/null || true
         echo "    同步 hook 脚本 → ${hook_dir}"
@@ -130,7 +138,7 @@ elif [ -n "$TARGET_ARG" ]; then
             [ "${t%%|*}" = "$w" ] && SELECTED+=("$t")
         done
     done
-    [ "${#SELECTED[@]}" -eq 0 ] && { echo "❌ 未知目标: $TARGET_ARG（可用: hermes/claude/codex/zcode/pi）"; exit 1; }
+    [ "${#SELECTED[@]}" -eq 0 ] && { echo "❌ 未知目标: $TARGET_ARG（可用: hermes/claude/codex/zcode/pi/dsh）"; exit 1; }
 elif [ -t 0 ]; then
     # 交互模式（stdin 是终端）
     echo ""
@@ -171,7 +179,8 @@ echo ""
 echo "✅ ${SKILL_NAME} v${NEW_VERSION} 安装完成！"
 echo "   - Hermes: 新会话自动加载，当前会话 /reload-skills 生效"
 echo "   - Claude Code / Codex / ZCode / pi: 新会话自动加载"
+echo "   - DeepSeek Harness: 写盘即热更新（技能目录被监听），当前会话直接可用"
 echo ""
 echo "快速开始：对 AI 说 \"qwiki init\" 初始化知识库"
 echo "更新：重跑本脚本即升级（旧版备份到 <tool 根>/skills-backup/，扫描根外）"
-echo "指定目标：bash install.sh --target hermes,claude,zcode,pi  或  --all"
+echo "指定目标：bash install.sh --target hermes,claude,dsh  或  --all"

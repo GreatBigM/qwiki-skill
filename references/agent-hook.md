@@ -1,7 +1,7 @@
 # Hook 机制（qwiki 自发生长基础设施，跨工具）
 
 > 2026-08-02 定稿，2026-08-18 增 ZCode，2026-08-28 增 pi。qwiki 知识自动生成的事件驱动层——hook 是触发器（写标记/注入指令），沉淀是 AI 的活（加载本 skill 执行）。多工具（Hermes/Claude Code/Codex/ZCode/pi）同构，payload 差异由 `scripts/knowledge-sediment-lib.sh` 归一化（pi 走原生 TypeScript 扩展 `qwiki-sediment.ts`，不经过 shell 脚本），工具判定与输出协议由 `sediment_detect_tool` 承担（注册命令第 1 参为工具名）。
-> **受体现状（2026-10-15）**：本机现行受体 = **Hermes + Claude**；`codex` 未安装 / `pi` 未安装 / ZCode 已卸载。下述 Codex / ZCode / pi 条目（注册表与事件列）**保留为分发兼容说明**——`install.sh` 按目录探测自动跳过不存在的受体。
+> **受体现状（2026-10-22）**：本机 hook 受体 = **Hermes + Claude**；DSH 是 skill-only 受体（无 hook 面），下述 hook 条目对其不生效；`codex` / `pi` 未安装、ZCode 已卸载——相关条目保留为分发兼容说明。
 
 ## 原理：为什么用 hook 不用 SOUL
 
@@ -170,3 +170,29 @@ inject.sh 读取全部标记 → 合并为一条指令注入（Hermes 走 contex
 - `hermes hooks test --payload-file` 的默认 payload 固定 `tool_name=terminal`（--for-tool 只影响 matcher 不改变 payload）——模拟测试要传完整 payload
 - 注入会 append 到 user message——指令要精炼（一次沉淀动作），inject 读后即删避免重复注入
 - **队列目录设计**：每个事件写独立文件（纳秒时间戳前缀），避免快速连续事件互相覆盖；inject 一次性消费全部标记
+
+## 受体清单与 DSH（原 SKILL §跨工具说明，v2.14.0 迁入）
+
+> **跨工具说明**：知识库本体（~/qwiki/）与工具无关，任何 agent（Hermes / Claude Code / DSH / Codex / ZCode / pi）都能读写。事件驱动层多工具同构（Hermes/Claude/Codex/ZCode 走 hook，脚本 `scripts/knowledge-sediment-lib.sh` 按工具分支归一化事件名与输出协议；pi 无 hook，由 `~/.pi/agent/extensions/qwiki-sediment.ts` 扩展把同一标记协议接到 pi 事件模型——before_agent_start 注入检索引导+消费队列 / tool_result 写标记 / session_shutdown 跨会话提醒；标记队列 `${XDG_STATE_HOME:-~/.local/state}/qwiki/sediment/` 跨工具共享），检索引导由 inject.sh 每轮注入（Hermes 走 context，Claude/ZCode 走 hookSpecificOutput.additionalContext）或 hint.sh Stop 门禁注入（Codex/ZCode）——SOUL.md 无需声明检索链（方案 A 定稿，2026-08-02）。DSH（DeepSeek Harness）是 **skill-only 受体**：技能发现走原生目录包 `~/.dsh/skills/<name>/SKILL.md`（frontmatter 只需 `name` + `description`；dsh 的 preset 已挂 `dsh-skill-filesystem`，写盘即热更新、免重启），但它**没有 hooks 配置面**（扩展面是 cordis 插件）⇒ DSH 下只有 skill 本体，事件驱动层、检索引导注入与自动沉淀标记全部缺席，需显式 `qwiki explore` / 手动沉淀。
+## 沉淀标记核实（仅 hook 受体；原 SKILL v2.14.1 迁入）
+
+hook 只在**本轮注入文本**里告诉你「有标记」，标记文件本身已被 inject **读后即删**——先核实再动手，别照着空标记硬造卡。
+
+**第一步：看注入文本有没有「细节：…」段**
+- 有细节 ⇒ 真产出（subagent_stop 的 detail = role|状态|摘要），照细节建卡/更新
+- 只有「检测到沉淀标记（xxx）」无细节 ⇒ detail 为空（退化/陈旧标记），核实后多半结论是「无需沉淀」
+- **队列目录为空不能证明没有标记**（读完即删是常态）；队列目录 mtime ≈ 本会话启动时刻 = 标记刚被消费
+
+**第二步：核实顺序（判「无待沉淀」前必跑，缺一步不算核对过）**
+1. 库侧现状：`cd ~/qwiki && git log --oneline -12 && git status --short` —— 工作区干净且时间窗内已有对应 commit ⇒ 产出已沉淀，标记属陈旧遗留
+2. 反查产出事件是否真的存在（Hermes 侧 state.db，只读连接即可，不必停任何进程）：
+   - `select session_id,timestamp from messages where tool_calls like '%delegate_task%' and timestamp > <窗口起点 epoch> order by timestamp desc`
+   - 再看 `sessions`（id/source/model/started_at/title），`source='subagent'` 的会话才是真子代理（该表**无 `platform` 列**）；窗口内 0 条 delegate_task ⇒ 不存在产出该标记的子代理，标记必为陈旧/退化
+3. 跨工具排查：队列跨工具共享（lib.sh `SEDIMENT_QUEUE_DIR`），标记可能来自别的 agent —— 查各自会话落点的新增/改动（Claude `~/.claude/projects/**/*.jsonl` 按 mtime；本机已卸载的工具不必再列）
+4. 判定并回报：未沉淀 → 按归属路由建卡/更新 + INDEX + commit；已沉淀 → 忽略本条，给出依据（commit hash / 时间窗）
+
+**坑**
+- `agent.log` 里反复出现的 `shell hook registered: subagent_stop` **只是进程启动日志**（no_agent cron worker 每几分钟起一次也照打），不是子代理运行过的证据——别据此认定「有子代理活动」
+- 退化/陈旧标记会一直躺在队列里，等**下一次任意工具的注入**才被清掉 ⇒ 会在几天后「突然」出现在某个会话开头；空 detail 是它的指纹
+- 已删标记无法从日志回捞（grep 注入文案/标记类型名都无痕）——注入文本是唯一残留证据；别在别处找标记文件，队列目录只有一个真相源
+- 结论必须写进回复：查了什么、结论、依据、**证伪项**（用户要看到核查痕迹，不接受「无可沉淀」的静默一笔带过）

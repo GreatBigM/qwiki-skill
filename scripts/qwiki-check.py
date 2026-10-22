@@ -17,6 +17,8 @@ import re
 import sys
 
 SKIP_DIRS = {"resource", "scripts", ".git"}
+MAX_SUMMARY = 80          # 与 SKILL/SCHEMA 的「≤80」同源；qwiki-sync 复用，不另写一份
+PROV_RE = re.compile(r"^(?:\*\*)?(?:来源|依据|状态|口径)\*{0,2}\s*[:：]|^来源\s+change|^change\s|^`change")  # 首行是出处/状态，不是结论
 H1_RE = re.compile(r"^# (.+)$", re.M)
 FM_RE = re.compile(r"^---\n(.*?)\n---\n", re.S)
 LINK_RE = re.compile(r"\[\[([^\]|\n]+?)(?:\|[^\]\n]*)?\]\]")
@@ -46,15 +48,38 @@ def split(text):
     return (m.group(1), text[m.end():]) if m else (None, text)
 
 
+def fm_fields(fm):
+    """极简 YAML 头解析（不引 PyYAML）：标量、引号、块标量（`>-` / `|`）。
+
+    只求取出 title / summary 这类文本值，不做 YAML 全语义——真正的「可解析」
+    断言在 check_yaml（那一项才按需用 PyYAML）。块标量支持是 2026-10-22 补的：
+    此前 `summary: >-` 会被读成字符串 `>-`，让「三处同串」对二十来张卡全部误报。
+    """
+    data, lines, i = {}, (fm or "").split("\n"), 0
+    while i < len(lines):
+        m = re.match(r"^([A-Za-z_][\w-]*):(?:\s*(.*))?$", lines[i])
+        if not m:
+            i += 1
+            continue
+        key, val = m.group(1), (m.group(2) or "").strip()
+        if val in (">", ">-", ">+", "|", "|-", "|+"):
+            i += 1
+            buf = []
+            while i < len(lines) and (not lines[i].strip() or lines[i].startswith(("  ", "\t"))):
+                buf.append(lines[i].strip())
+                i += 1
+            data[key] = ("" if val.startswith(">") else "\n").join(buf).strip()
+            continue
+        if len(val) > 1 and val[0] == val[-1] and val[0] in "\"'":
+            val = val[1:-1]
+        data[key] = val
+        i += 1
+    return data
+
+
 def fm_field(fm, key):
-    """从头里取一个标量（不引 PyYAML；只用于 title/summary 这类单行值）。"""
-    m = re.search(r"(?m)^" + key + r":\s*(.*)$", fm or "")
-    if not m:
-        return ""
-    v = m.group(1).strip()
-    if len(v) > 1 and v[0] == v[-1] and v[0] in "\"'":
-        v = v[1:-1]
-    return v
+    """从头里取一个文本值（支持块标量）。"""
+    return fm_fields(fm).get(key, "")
 
 
 def summary_line(body):
@@ -78,12 +103,17 @@ def strip_code(t):
 # ── INDEX 解析 ────────────────────────────────────────────────────
 
 def index_rows(root):
-    """→ [{line, title, summary, path, key}]，key = 去 `projects/` 前缀的路径。"""
+    """→ [{line, section, title, summary, path, key}]，key = 去 `projects/` 前缀的路径。"""
     rows = []
     path = os.path.join(root, "INDEX.md")
     if not os.path.exists(path):
         return rows
+    section = None
     for ln, line in enumerate(open(path, encoding="utf-8"), 1):
+        m_sec = re.match(r"^##\s+(\S.*?)\s*$", line)
+        if m_sec:
+            section = m_sec.group(1)
+            continue
         if not line.startswith("|"):
             continue
         c = [x.strip() for x in line.strip().strip("|").split("|")]
@@ -93,7 +123,8 @@ def index_rows(root):
         if not m:
             continue
         key = m.group(0)
-        rows.append({"line": ln, "title": c[0], "summary": c[1], "path": c[2], "key": key})
+        rows.append({"line": ln, "section": section, "title": c[0], "summary": c[1],
+                     "path": c[2], "key": key})
     return rows
 
 
@@ -111,10 +142,22 @@ def resolve(root, key):
     return None
 
 
+def section_of(rel, projects):
+    """卡片路径 → INDEX 段名（personal / common / <项目>）；推不出返回 None。"""
+    if rel.startswith("personal/"):
+        return "personal"
+    if rel.startswith("projects/common/"):
+        return "common"
+    parts = rel.split("/")
+    if len(parts) > 2 and parts[0] == "projects" and parts[1] in projects:
+        return parts[1]
+    return None
+
+
 # ── 各项检查：每项返回 (名称, 通过?, [失败描述]) ─────────────────────
 
 def check_card_headers(root, cards, rows):
-    """H1 在正文首位；H1 后第一个非空块是 `>` 行；有 `> 依据` / `> 状态`。"""
+    """H1 在正文首位；H1 = title；H1 后首个 `>` 行是结论；有 `> 依据/状态/来源/change/口径`。"""
     bad = []
     for rel in cards:
         fm, body = split(open(os.path.join(root, rel), encoding="utf-8").read())
@@ -126,18 +169,27 @@ def check_card_headers(root, cards, rows):
         if k is None or not lines[k].startswith("# "):
             bad.append(f"{rel}: H1 不在正文首位（前面还有内容）")
             continue
-        if summary_line(body) is None:
+        title = fm_field(fm, "title").strip()
+        h1 = lines[k][2:].strip()
+        if title and h1 != title:
+            bad.append(f"{rel}: 正文 H1 ≠ YAML title（H1「{h1[:40]}」/ title「{title[:40]}」）")
+        first = summary_line(body)
+        if first is None:
             bad.append(f"{rel}: H1 后第一个非空块不是 `>` 引言行")
-        if not re.search(r"(?m)^>\s*\**\s*(依据|状态)", body):
-            bad.append(f"{rel}: 缺 `> 依据`（有版本可对）或 `> 状态`（账本 / 记录类）")
+        elif PROV_RE.match(first):
+            bad.append(f"{rel}: H1 后首行是出处/状态（{first[:24]}…），一句话结论应在前；出处另起 `>` 段")
+        if not re.search(r"(?m)^>\s*\**\s*(依据|状态|来源|change|口径)", body):
+            bad.append(f"{rel}: 缺 `> 依据`（或 来源/change/口径）与 `> 状态` 之一，卡头无法自证")
         for m in re.finditer(r"(?m)^##\s*(关联|参考|参见|相关链接|互链)\s*$", body):
             bad.append(f"{rel}: 相关段标题须为 `## 相关`（现为 {m.group(0).strip()}）")
-    return "卡片头部（H1 首位 / `>` 引言行 / 依据·状态）", not bad, bad
+    return "卡片头部（H1/title 同串 / `>` 结论行 / 依据·状态）", not bad, bad
 
 
 def check_index_projection(root, cards, rows):
-    """INDEX 两列 = 卡片集的正投影；一卡一行。"""
+    """INDEX 两列 = 卡片集的正投影；段头由路径推出；一卡一行。"""
     bad, seen = [], set()
+    pd = os.path.join(root, "projects")
+    projects = {d for d in os.listdir(pd) if os.path.isdir(os.path.join(pd, d))} if os.path.isdir(pd) else set()
     for r in rows:
         if r["key"].startswith("projects/"):
             bad.append(f"INDEX:{r['line']} 文件列带 `projects/` 前缀（应写 `<项目>/<slug>.md`，省略前缀）")
@@ -148,19 +200,20 @@ def check_index_projection(root, cards, rows):
         if rel in seen:
             bad.append(f"INDEX:{r['line']} 「{os.path.basename(rel)}」占了多行（一卡一行）")
         seen.add(rel)
+        want = section_of(rel, projects)
+        if want and r.get("section") and want != r["section"]:
+            bad.append(f"INDEX:{r['line']} 段头 `## {r['section']}` 与卡片路径不符（应在 `## {want}`）")
         fm, body = split(open(os.path.join(root, rel), encoding="utf-8").read())
         t, s = fm_field(fm, "title"), summary_line(body)
-        sy = fm_field(fm, "summary")
-        if sy and s and sy != s:
-            bad.append(f"INDEX:{r['line']} YAML `summary` ≠ 正文 `>` 引言行（三处同串）\n"
-                       f"      summary: {sy[:60]}\n      `>`    : {s[:60]}")
         if t and r["title"] != t:
             bad.append(f"INDEX:{r['line']} 标题列 ≠ 卡片 title\n      INDEX: {r['title'][:60]}\n      title: {t[:60]}")
-        if s and r["summary"] != s:
+        if not r["summary"]:
+            bad.append(f"INDEX:{r['line']} 总结列为空")
+        elif s and r["summary"] != s:
             bad.append(f"INDEX:{r['line']} 总结列 ≠ 卡片 `>` 行\n      INDEX: {r['summary'][:60]}\n      `>`  : {s[:60]}")
     missing = [c for c in cards if c not in seen]
     bad += [f"{c}: 有卡但 INDEX 无登记行" for c in missing]
-    return "INDEX 正投影（标题列 / 总结列 / 一卡一行 / 无漏登记）", not bad, bad
+    return "INDEX 正投影（标题列 / 总结列 / 段头 / 一卡一行 / 无漏登记）", not bad, bad
 
 
 def check_index_clean(root, cards, rows):
@@ -172,8 +225,8 @@ def check_index_clean(root, cards, rows):
             bad.append(f"INDEX:{r['line']} 素材/脚本误登本表（{r['key']}）")
         if resolve(root, r["key"]) is None:
             bad.append(f"INDEX:{r['line']} 死链（{r['key']}）")
-        if r["summary"].startswith(("#", "|", "!")) or len(r["summary"]) > 80:
-            bad.append(f"INDEX:{r['line']} 总结列异常（{len(r['summary'])} 字符，应以摘要开头且 ≤80）")
+        if r["summary"].startswith(("#", "|", "!")) or len(r["summary"]) > MAX_SUMMARY:
+            bad.append(f"INDEX:{r['line']} 总结列异常（{len(r['summary'])} 字符，应以摘要开头且 ≤{MAX_SUMMARY}）")
     # 段头须属 {## personal, ## common, ## <projects 实际目录名>}（SCHEMA §INDEX 登记规则）
     pd = os.path.join(root, "projects")
     allowed = {"personal", "common"} | (
@@ -184,7 +237,27 @@ def check_index_clean(root, cards, rows):
             m = re.match(r"^##\s+(\S.*?)\s*$", line)
             if m and m.group(1) not in allowed:
                 bad.append(f"INDEX:{ln} 段头 `## {m.group(1)}` 不在 {{personal / common / <项目目录名>}} 之列")
-    return "INDEX 纯度（只登记卡片 / 无死链 / 摘要长度）", not bad, bad
+    # 表体完整性：每张表必须以「表头 + 分隔行」开头，数据行后不得再出现分隔行
+    if os.path.exists(idx):
+        tbl = []
+        for ln, line in enumerate(open(idx, encoding="utf-8").read().split("\n") + [""], 1):
+            if line.startswith("|"):
+                tbl.append((ln, line))
+                continue
+            if tbl:
+                first = tbl[0][1]
+                if len(tbl) < 2:
+                    bad.append(f"INDEX:{tbl[0][0]} 表只有一行，缺分隔行")
+                else:
+                    if ".md" in first:
+                        bad.append(f"INDEX:{tbl[0][0]} 表体缺表头（首行就是数据行）")
+                    if not set(tbl[1][1].strip()) <= set("|-: "):
+                        bad.append(f"INDEX:{tbl[1][0]} 表头后不是分隔行")
+                for ln2, l2 in tbl[2:]:
+                    if set(l2.strip()) <= set("|-: "):
+                        bad.append(f"INDEX:{ln2} 分隔行出现在数据行之后")
+                tbl = []
+    return "INDEX 纯度（只登记卡片 / 无死链 / 摘要长度 / 表体完整）", not bad, bad
 
 
 def check_links(root, cards, rows):
@@ -209,12 +282,14 @@ def check_material_paths(root, cards, rows):
     只认「首段是真实项目名」的路径——代码仓也有 `0_workbench/change/…`、
     `text/data/…` 这类同名段，不加这条会报一堆假阳性。
     """
-    projects = {d for d in os.listdir(os.path.join(root, "projects"))
-                if os.path.isdir(os.path.join(root, "projects", d))}
+    pd = os.path.join(root, "projects")
+    projects = {d for d in os.listdir(pd) if os.path.isdir(os.path.join(pd, d))} if os.path.isdir(pd) else set()
     bad = []
     for rel in cards:
         t = open(os.path.join(root, rel), encoding="utf-8").read()
         for m in re.finditer(r"`([a-z0-9_-]+/resource/[^`]+)`", t):
+            if m.group(1) not in projects:
+                continue  # 代码仓路径（rootfs/resource/… 等），不是 qwiki 素材
             if not os.path.exists(os.path.join(root, "projects", m.group(1))):
                 bad.append(f"{rel}: 素材路径不存在 `{m.group(1)}`")
         for m in re.finditer(r"`([a-z0-9_-]+)/(references|design|archive|change|data)/([^`]+)`", t):
@@ -331,7 +406,7 @@ def check_yaml(root, cards, rows):
     try:
         import yaml
     except ImportError:
-        return "YAML 头可解析", True, ["（跳过：本机无 PyYAML）"]
+        return "YAML 头可解析", None, ["（跳过：本机无 PyYAML —— 此项未验证，不计入通过）"]
     bad = []
     n = 0
     for dp, dn, fn in os.walk(root):
@@ -435,17 +510,20 @@ def main(argv):
     cards, rows = card_files(root), index_rows(root)
     print(f"qwiki 自检：{root}")
     print(f"  卡片 {len(cards)} 张 ｜ INDEX {len(rows)} 行\n")
-    failed = 0
+    failed, skipped, failed_names = 0, 0, []
     for fn in CHECKS:
         name, ok, detail = fn(root, cards, rows)
-        print(f"  {'✓' if ok else '✗'} {name}")
-        if not ok:
+        print(f"  {'⊘' if ok is None else ('✓' if ok else '✗')} {name}")
+        if ok is not True:
             for d in detail[:20]:
                 print(f"      {d}")
             if len(detail) > 20:
                 print(f"      … 另 {len(detail) - 20} 条")
-        if not ok:
+        if ok is False:
             failed += 1
+            failed_names.append(name)
+        elif ok is None:
+            skipped += 1
     hints = naming_hints(root, cards, rows)
     if hints and not quiet:
         print(f"\n提示（不计失败 —— 命名形态建议，规则见 SCHEMA §命名约定 规则 4）")
@@ -453,8 +531,16 @@ def main(argv):
             print(f"    · {h}")
         if len(hints) > 20:
             print(f"    … 另 {len(hints) - 20} 条")
+    if any("正投影" in n for n in failed_names):
+        print("\n提示：投影类红灯（标题列 / 总结列与卡片对不上）不用手改 —— "
+              "跑 `python3 scripts/qwiki-sync.py <库根> --write` 重建 INDEX 后再自检。")
     print()
-    print("全部通过" if not failed else f"{failed} 项未通过 —— 按 SKILL §sync 处置")
+    if failed:
+        print(f"{failed} 项未通过 —— 按 SKILL §sync 处置")
+    elif skipped:
+        print(f"{len(CHECKS) - skipped} 项通过 · {skipped} 项跳过（未验证）")
+    else:
+        print("全部通过")
     return 1 if failed else 0
 
 

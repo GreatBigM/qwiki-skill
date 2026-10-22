@@ -3,7 +3,7 @@ title: <线名> 轨迹 —— 做了什么 / 拆了什么 / 否了什么（含�
 type: card
 date: <YYYY-MM-DD>
 tags: [<标签>]
-summary: <一句话总结>
+summary: <长摘要，可多行；不参与 INDEX 投影>
 ---
 
 # <线名> 轨迹

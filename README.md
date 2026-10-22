@@ -2,13 +2,13 @@
 
 AI 知识库管理技能（skill）—— 用九条命令管理你的跨工具知识库。
 
-qwiki 让 AI 助理拥有一个 git 管理的知识库：项目知识卡片 + 个人笔记 + 全局索引，按需加载、可检索、可沉淀。跨工具兼容（Hermes / Claude Code / Codex / ZCode / pi），仓库根目录即 skill 本体，用一键脚本或手动复制安装。Codex / ZCode / pi 条目为**分发兼容说明**——**本机受体现状见下方「安装」节注记**。
+qwiki 让 AI 助理拥有一个 git 管理的知识库：项目知识卡片 + 个人笔记 + 全局索引，按需加载、可检索、可沉淀。跨工具兼容（Hermes / Claude Code / DeepSeek Harness / Codex / ZCode / pi），仓库根目录即 skill 本体，用一键脚本或手动复制安装。Codex / ZCode / pi 条目为**分发兼容说明**——**本机受体现状见下方「安装」节注记**。
 
 ## 安装
 
-本 skill 支持多 agent 目标：Hermes / Claude Code / Codex / ZCode / pi。安装脚本自动探测本机已安装的 agent，让用户选择安装目标。pi 的事件驱动层由 `~/.pi/agent/extensions/qwiki-sediment.ts` 扩展承接（pi 无 hook 机制，扩展把同一标记协议接到 pi 事件模型，标记队列跨工具共享）。
+本 skill 支持多 agent 目标：Hermes / Claude Code / DeepSeek Harness（DSH）/ Codex / ZCode / pi。安装脚本自动探测本机已安装的 agent，让用户选择安装目标。DSH 是 skill-only 受体——技能根 `~/.dsh/skills`，目录包写盘即热更新（免重启），`--target dsh` 只装 skill 本体、不落 hook 脚本（DSH 无 hooks 配置面）。pi 的事件驱动层由 `~/.pi/agent/extensions/qwiki-sediment.ts` 扩展承接（pi 无 hook 机制，扩展把同一标记协议接到 pi 事件模型，标记队列跨工具共享）。
 
-> **受体现状（2026-10-15）**：本机现行受体 = **Hermes + Claude**；`codex` 未安装 / `pi` 未安装 / ZCode 已卸载。下文 Codex / ZCode / pi 相关条目**保留为分发兼容说明**——`install.sh` 按目录探测自动跳过不存在的受体，未装即不会被写入。
+> **受体现状（2026-10-22）**：本机现行受体 = **Hermes + Claude + DeepSeek Harness（DSH）**；`codex` 未安装 / `pi` 未安装 / ZCode 已卸载。DSH 是 **skill-only 受体**：装 `~/.dsh/skills/qwiki`，无 hook 配置面（扩展面是 cordis 插件），事件驱动层不注册。下文 Codex / ZCode / pi 相关条目**保留为分发兼容说明**——`install.sh` 按目录探测自动跳过不存在的受体，未装即不会被写入。
 
 ```bash
 # 方式 1：交互选择安装目标（推荐，先下载再执行以保留交互）
@@ -65,19 +65,20 @@ hermes skills install qwiki
 | 依赖 | 必需 | 用途 | 获取方式 |
 |------|------|------|--------|
 | Hermes / Claude Code / Codex 任一 | 是 | skill 运行环境 | 各工具官方渠道 |
+| DeepSeek Harness（dsh） | 是 | skill 运行环境 | 本机 `~/.local/bin/dsh`（npm 包 `@deepseek-ai/dsh`） |
 | git | 是 | 知识库版本管理 | 系统自带 |
 | python3 | 否 | hook 脚本（缺失时静默跳过，不阻塞主流程） | 系统自带 |
 
 零外部 skill 依赖——hook 机制说明已内嵌（references/agent-hook.md，含各家注册表）。
 
-> 依赖表只列已在用的三家；`install.sh` 以**目录探测**决定安装目标（`~/.zcode`、`~/.pi/agent` 等存在即会被选中），本机没有的工具不会被写入（本机现无 codex / ZCode / pi——受体现状见上文「安装」节注记）。
+> 依赖表只列已在用的四家；`install.sh` 以**目录探测**决定安装目标（`~/.zcode`、`~/.pi/agent` 等存在即会被选中），本机没有的工具不会被写入（本机现无 codex / ZCode / pi——受体现状见上文「安装」节注记）。
 
 ## 快速上手
 
 ```bash
 qwiki init              # 初始化知识库（创建 ~/qwiki/ 骨架 + INDEX.md）
 qwiki import <项目>     # 新项目入驻：AI 读 SDK → 建项目卡 → 登记 INDEX
-qwiki migrate <项目>    # 老知识升级为卡片体系
+qwiki migrate <来源> [目标]  # 非当前版本知识入迁（旧库 / 笔记 / 项目 resource）
 qwiki note <标题>       # 随手笔记
 qwiki explore [关键词]  # 知识检索
 qwiki sync              # 日常同步（一致性校验 + 防腐化 + 结构审视）
@@ -90,15 +91,15 @@ qwiki deinit            # 全局拆除
 
 ```
 qwiki-skill/
-├── README.md                        ← 本文件（仓库说明 + 安装方法）
-├── install.sh                       ← 一键安装脚本（多 agent 目标）
-├── CHANGELOG.md                     ← 版本历史
-├── SKILL.md                         ← 操作手册（九操作路由 + 详细步骤，仓库根即 skill）
-├── SCHEMA.md                        ← 宪法（知识库目标态的唯一真相源，随安装拷贝）
-├── templates/                       ← index / card-aggregate / card-track / card-measurement / card-issue / card-design / note-general 七模板
-├── references/                      ← agent-hook（hook 机制 + 各家注册表：Hermes/Claude/Codex/ZCode，pi 走扩展；本机现行受体见「安装」节受体现状）
-└── scripts/                         ← qwiki-check.py（库自检，11 项断言）+ publish-check.py（发布前脱敏）+ number-audit.py（宪法与对外文档不得含实测数字）+ 四 hook 脚本 + hooks/pre-push（四项都跑：自检 / 脱敏 / 数字 / CHANGELOG 同步）
+├── README.md / install.sh / CHANGELOG.md   ← 仓库说明 / 安装 / 版本历史
+├── SKILL.md                                ← 操作手册（九操作路由 + 详细步骤，仓库根即 skill）
+├── SCHEMA.md                               ← 宪法（知识库目标态的唯一真相源，随安装拷贝）
+├── templates/                              ← 卡片模板
+├── references/                             ← 决策原因 / hook 机制 / 批量修卡 playbook
+└── scripts/                                ← 库自检 / 投影生成 / 发布闸门 / hook 脚本
 ```
+
+> 支持文件逐个清单见 `SKILL.md` 末尾「支持文件清单」（单一真相源，本文件不复述）。
 
 ## 模型（一张图）
 

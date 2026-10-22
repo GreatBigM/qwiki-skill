@@ -1,5 +1,46 @@
 # Changelog
 
+## 2.14.1 (2026-10-22)
+
+### Fixed
+- **投影守卫**：`qwiki-sync.py` 不再把出处/状态行写成 INDEX 总结、不再在缺 `>` 时清空总结列；含 `|` 的标题/总结拒绝写表（转人工）；补登记到空段时自动补表头与分隔行；INDEX 原子写入
+- **自检补齐四项**（仍 11 项，并入既有断言）：`title` ↔ 正文 H1 同串、INDEX 段头 ↔ 卡片路径、总结列空值、INDEX 表体完整性（表头 / 分隔行 / 数据行后不得再有分隔行）
+- **PyYAML 缺库不再冒充通过**：YAML 项标 `⊘ 跳过` 并计入「未验证」，汇总区分「通过 / 跳过」
+- **模板跟上 2.14 模型**：6 张模板的 `summary` 改为长摘要；`note-general` 删除「与 YAML summary 一致、同步填」的旧口径
+- **结构收敛**：沉淀标记核实整节移入 `references/agent-hook.md`（仅 hook 受体）；批量修卡 playbook 移入 `references/bulk-repair.md`；删除 SKILL 中与 SCHEMA 重复的卡片身份段与「用途 × 模板」表的重复列；`design-decisions.md` 只留决策原因
+- **文档漂移**：SCHEMA「自检第 10 项」改为项名；README 不再内联枚举支持文件、`migrate` 参数对齐路由表；路由表 `qwiki sync [项目]` 与实现对齐（取消该可选参数）
+
+- 版本 2.14.0 → 2.14.1
+
+## 2.14.0 (2026-10-22)
+
+### Changed
+- **摘要分两面：投影从「三处同串」改为「两处同串」**：`>` 首行 = 一句话结论（≤80，INDEX 总结列的唯一来源）；YAML `summary` = 可多行的长摘要，**不参与投影、不要求与 `>` 同串**。旧规则要求 YAML / `>` / INDEX 三处逐字相同，实测对二十多张按实际习惯写成的卡（YAML 用 `>-` 写 2–5 行摘要）全是误报
+- **INDEX 变成生成物**：新增 `scripts/qwiki-sync.py` —— 标题列 ← `title`、总结列 ← `>` 首行、文件列 ← canonical key，`--write` 落盘。投影漂移不再靠人记（旧口径「改一处即改三处」在 200+ 卡规模下必然漏）
+- **只拆「不参与执行」的内容（按 agent-skill-gen 规范对齐）**：跨工具说明 / 受体现状长文 → `references/agent-hook.md`；**新增 `references/design-decisions.md`** 收决策原因（SCHEMA 为何独立、投影为何两处同串、操作为何不拆）；README 只留「文件构成」一行。**九操作、判定动作、沉淀标记核实全部留在 `SKILL.md` 正文**，**支持文件清单仍在 SKILL.md 末尾**（gen 规范：SKILL.md 是唯一入口 + 清单单一真相源）。正文 32.4 KB → 30.4 KB
+- **新增「收尾自检」三问**：无 hook 的受体（DSH）也能跑的手工兜底 —— 可复用结论 / 推翻旧结论 / 新坑
+
+### Fixed
+- **自检三处误报**：① 块标量 `summary: >-` 被读成字符串 `>-`，「YAML summary ≠ `>`」对二十多张卡误报；② 依据行词表只认 `依据|状态`，而卡内实际在用 `来源` / `change` / `口径`；③ `rootfs/resource/…` 这类代码仓路径被当成 qwiki 素材路径报「不存在」
+- **投影红灯给出修复入口**：自检失败时提示 `qwiki-sync.py --write`，不再只写「按 §sync 处置」
+- **install.sh 清理语义**：拷贝前先清空 `COPY_DIRS`（及 `COPY_SCRIPTS`）对应目录——副本是纯复制品，先清后拷，避免已下线的支持文件在安装副本里永久残留
+
+### 知识库侧（本次一并收口）
+- `~/qwiki` 11 项断言全绿：INDEX 投影重建（标题列 20 行 / 总结列 30 行）、7 张卡的 `>` 首行压到 ≤80、12 张卡补 `> 依据`、1 张卡补 `>` 块
+
+- 版本 2.13.1 → 2.14.0
+
+## 2.13.1 (2026-10-22)
+
+### Added
+- **DSH（DeepSeek Harness）受体接入**：`install.sh` 新增 `--target dsh`，装至 `~/.dsh/skills/qwiki` —— DSH 原生用户技能根（rank 400），发现规则是 `<root>/<name>/SKILL.md` 目录包、frontmatter 只需 `name`（kebab-case）+ `description`。qwiki **不需要改格式、也不需要写插件**：dsh 的 preset 已挂 `dsh-skill-filesystem`，技能根被监听，写盘即热更新、免重启（实测：装完当前会话立刻出现在 skill 目录并可加载）
+- **DSH 是 skill-only 受体**：DSH 无 Claude 式 hooks 配置面（扩展面是 cordis 插件）⇒ 事件驱动层（检索引导注入 / 自动沉淀标记）在 DSH 缺席，只有 skill 本体，靠显式 `qwiki explore` / 手动沉淀；`install.sh` 的 dsh 目标因此**不落 hook 脚本**到 `~/.dsh/scripts`
+
+### Fixed
+- **`get_version` 解析吃掉数字**：`tr -d '"'\'' '` 里的 `\x27` 不是 tr 的转义，被当成字面字符集 `\ x 2 7 空格`，把版本里的数字一起删（`2.13.0` → `.13.0`），升级提示与已装版本比对全错；改用 `sed` 去引号与空白
+
+- 版本 2.13.0 → 2.13.1
+
 ## 2.13.0 (2026-10-15)
 
 ### Added

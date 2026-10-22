@@ -3,12 +3,12 @@ title: <标题>
 type: note
 date: <YYYY-MM-DD>
 tags: [<标签>]
-summary: <一句话总结>
+summary: <长摘要，可多行；不参与 INDEX 投影>
 ---
 
 # <标题>
 
-> <一句话总结>（渲染副本，与 YAML summary 一致，AI 生成时同步填）
+> <一句话结论，≤80 字符>
 >
 > 依据：<代码版本 / commit / 固件>（判不出写 `未标注`，不要编）
 

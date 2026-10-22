@@ -3,7 +3,7 @@ title: <问题名>
 type: card
 date: <YYYY-MM-DD>
 tags: [<标签>]
-summary: <一句话总结>
+summary: <长摘要，可多行；不参与 INDEX 投影>
 ---
 
 # <问题名>
