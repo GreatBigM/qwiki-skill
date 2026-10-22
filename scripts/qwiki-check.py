@@ -560,6 +560,9 @@ def check_tag_facets(root, cards, rows):
         for t in tags:
             if t.split("/", 1)[0] not in ("项目", "模块", "类型", "关键词1", "关键词2", "关键词3"):
                 bad.append(f"{rel}: 标签 `{t}` 没有分面前缀（项目/模块/类型/关键词N）")
+        if len(tags) > 5:
+            bad.append(f"{rel}: 标签 {len(tags)} 个（上限 5）—— 多出来的通常是第三个关键词，"
+                       "说明这张卡装着不止一个知识点，该拆卡")
     if bare:
         bad.append(f"另有 {bare} 张卡仍是旧式自由标签（未分面）—— 属存量，批量改写时处理")
     return "标签三面（项目 / 模块 / 关键词分级）", not bad, bad
