@@ -5,6 +5,13 @@
 
 ROOT="$(git rev-parse --show-toplevel)"
 
+# 守卫自身的测试：check / sync 的边界行为（缺 `>` 不覆盖总结 / 出处首行 / 空段补表头 / 表体断裂 …）。
+# 放在最前——守卫坏了，后面所有"通过"都不作数。
+python3 "$ROOT/scripts/qwiki-tests.py" >/dev/null || {
+  echo "✗ 核心测试未通过 —— 拒绝推送（python3 scripts/qwiki-tests.py 看明细）" >&2
+  exit 1
+}
+
 # 先验规则本身：闸门规则被改坏了，扫描再"通过"也不作数（自检与扫描共用同一份口径，见 publish-check.py 的 line_hits）
 python3 "$ROOT/scripts/publish-check.py" --self-test || {
   echo "✗ 闸门自检失败（规则表被改动？）—— 拒绝推送" >&2

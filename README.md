@@ -141,6 +141,7 @@ qwiki-skill/
 这个仓是公开的，`scripts/publish-check.py` 扫真实项目代号 / 内网 IP / MAC / 长 hash / 凭据 / 本机路径：
 
 ```bash
+python3 scripts/qwiki-tests.py             # 核心测试：check / sync 的守卫边界（改过脚本必跑）
 python3 scripts/publish-check.py          # 逐条判定，真实标识换 <项目A> / <IP> 占位符
 python3 scripts/number-audit.py            # 宪法与对外文档不得含实测数字（判据原文见其 docstring 的 CURRENT: 行）
 git config core.hooksPath scripts/hooks   # 启用 pre-push 钩子（每个克隆各做一次）→ 命中即拒绝推送
