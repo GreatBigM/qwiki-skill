@@ -10,9 +10,13 @@
   **可判定的口径**——退出码、报错串（用户看到的那句话）、落盘后的文件内容。口径变了
   用例就该红，路径变了不该。
 
-覆盖的边界（每条都对应一次真实踩坑或一条守卫）：
-  基线全绿 / 缺 `>` 引言行 / 出处首行 / 空段补表头 / `|` 拒绝写表 /
-  段头错位 / 表体断裂 / PyYAML 缺库标跳过 / 幂等 / H1≠title / 出处行不覆盖总结
+本文件同时是「红线」的守门人：**INDEX 入口错 → 退出码 1；规格项 → 退出码 0**。
+谁以后把规格接进入口错误（或反过来），用例立刻红。
+
+覆盖：
+  基线全绿 / 缺 `>` 引言行 / 出处首行 / 空段补表头 / `|` 拒绝写表 / 段头错位 / 表体断裂 /
+  PyYAML 缺库 / 幂等 / H1≠title / 出处行不覆盖总结 / `--all` / `sync --strict` /
+  死链 / 漏登记 / 规格不红（含 --strict）/ 账本三态（入账 → 存量 → 销账）
 
 接进发布闸门：`scripts/hooks/pre-push` 第一步就验它（守卫坏了，后面的"通过"不作数）。
 """
@@ -75,31 +79,31 @@ def read(root, rel="INDEX.md"):
 # ── 用例：每个返回 (通过?, 说明) ─────────────────────────────────────
 
 def case_baseline(tmp):
-    """基线：合规卡 + 合规 INDEX 必须全绿（没有这条，后面的红都可能是"本来就红"）。"""
+    """基线：合规卡 + 合规 INDEX 必须可用（没有这条，后面的红都可能是"本来就红"）。"""
     root = make_kb(tmp, {"personal/card.md": card()},
                    index(["| 卡片标题 | 结论 | personal/card.md |"]))
     rc, out = run(CHECK, root)
-    # 不断言「全部通过」：机器缺 PyYAML 时 YAML 项会标「跳过」，那是合规态（⊘ 不是 ✗）
-    return rc == 0 and "✗" not in out, f"rc={rc}"
+    # 不断言「无 PyYAML 也可」以外的措辞：机器缺 PyYAML 时只影响「其他」栏
+    return rc == 0 and "INDEX 入口   ✓" in out, f"rc={rc}"
 
 
 def case_missing_quote(tmp):
-    """缺 `>` 引言行：check 报红；sync 不得覆盖已有总结（没有结论不是"空"，是"没写"）。"""
+    """缺 `>` 引言行：只算规格（不红）；sync 不得覆盖已有总结。"""
     root = make_kb(tmp, {"personal/card.md": card(body="只有正文，没有引文块。\n")},
                    index(["| 卡片标题 | 结论 | personal/card.md |"]))
     rc, out = run(CHECK, root)
-    hit = rc == 1 and "不是 `>` 引言行" in out
+    spec = rc == 0 and "不是 `>` 引言行" in out and "INDEX 入口   ✓" in out
     _, out2 = run(SYNC, root, "--write")
     kept = "| 卡片标题 | 结论 | personal/card.md |" in read(root) and "没有 `>` 引文块" in out2
-    return hit and kept, f"check rc={rc} / sync 保留原总结={kept}"
+    return spec and kept, f"rc={rc} / sync 保留原总结={kept}"
 
 
 def case_prov_first(tmp):
-    """出处首行：check 必须认出「首行是出处/状态」而不是把出处当结论。"""
+    """出处首行：识别得出「首行是出处/状态」，但算规格项，不阻断。"""
     root = make_kb(tmp, {"personal/card.md": card(body="> 依据：2026-10-22 实测\n")},
                    index(["| 卡片标题 | 依据：2026-10-22 实测 | personal/card.md |"]))
     rc, out = run(CHECK, root)
-    return rc == 1 and "H1 后首行是出处/状态" in out, f"rc={rc}"
+    return rc == 0 and "首行是出处/状态" in out, f"rc={rc}"
 
 
 def case_empty_section(tmp):
@@ -109,8 +113,8 @@ def case_empty_section(tmp):
     text = read(root)
     ok = (INDEX_HEAD in text and "|------|------|------|" in text
           and "| 卡片标题 | 结论 | personal/card.md |" in text)
-    rc, out2 = run(CHECK, root)
-    return ok and rc == 0, f"补表头={ok} / 事后自检 rc={rc} / {out.strip().splitlines()[-1] if out.strip() else ''}"
+    rc, _ = run(CHECK, root)
+    return ok and rc == 0, f"补表头={ok} / 事后体检 rc={rc}"
 
 
 def case_pipe_title(tmp):
@@ -126,7 +130,7 @@ def case_pipe_title(tmp):
 
 
 def case_section_mismatch(tmp):
-    """段头错位：卡片在 projects/alpha 下，登记在 `## personal` 必须报出来。"""
+    """段头错位（硬）：卡片在 projects/alpha 下却登记在 `## personal` → 退出码 1。"""
     root = make_kb(tmp, {"projects/alpha/card.md": card()},
                    index(["| 卡片标题 | 结论 | alpha/card.md |"], section="personal"))
     rc, out = run(CHECK, root)
@@ -134,7 +138,7 @@ def case_section_mismatch(tmp):
 
 
 def case_table_break(tmp):
-    """表体断裂：数据行后再出现分隔行，必须报（否则表格会被后加的段落解析成两张）。"""
+    """表体断裂（硬）：数据行后再出现分隔行 → 退出码 1。"""
     rows = ["| 卡片标题 | 结论 | personal/card.md |", "|------|------|------|"]
     root = make_kb(tmp, {"personal/card.md": card()}, index(rows))
     rc, out = run(CHECK, root)
@@ -142,13 +146,11 @@ def case_table_break(tmp):
 
 
 def case_yaml_skip(tmp):
-    """PyYAML 缺库：YAML 项标「跳过」并计入未验证，不许冒充通过（-S 屏蔽 site-packages）。"""
+    """PyYAML 缺库：标「未验证」而不是冒充通过（-S 屏蔽 site-packages）。"""
     root = make_kb(tmp, {"personal/card.md": card()},
                    index(["| 卡片标题 | 结论 | personal/card.md |"]))
     rc, out = run(CHECK, root, flags=("-S",))
-    skipped = ("⊘ YAML 头可解析" in out
-               and ("1 项跳过" in out or "项跳过（未验证）" in out))
-    return rc == 0 and skipped, f"rc={rc} / 跳过标记={skipped}"
+    return rc == 0 and "未验证" in out, f"rc={rc}"
 
 
 def case_idempotent(tmp):
@@ -164,15 +166,15 @@ def case_idempotent(tmp):
 
 
 def case_h1_mismatch(tmp):
-    """H1 ≠ title：投影与正文标题是同一个字符串，漂移必须报。"""
+    """H1 ≠ title：规格项，不阻断（旧卡不该因此变红）。"""
     root = make_kb(tmp, {"personal/card.md": card(h1="另一个标题")},
                    index(["| 卡片标题 | 结论 | personal/card.md |"]))
     rc, out = run(CHECK, root)
-    return rc == 1 and "正文 H1 ≠ YAML title" in out, f"rc={rc}"
+    return rc == 0 and "正文 H1 ≠ YAML title" in out, f"rc={rc}"
 
 
 def case_summary_preserved(tmp):
-    """出处/状态行不覆盖总结：sync 只报告，不把 INDEX 里的旧结论换成长辈状态行。"""
+    """出处/状态行不覆盖总结：sync 只报告，不把 INDEX 里的旧结论换成状态行。"""
     body = "> 状态：已闭环 · 2026-10-22\n\n> 依据：fixture\n"
     root = make_kb(tmp, {"personal/card.md": card(body=body)},
                    index(["| 卡片标题 | 旧结论 | personal/card.md |"]))
@@ -182,25 +184,69 @@ def case_summary_preserved(tmp):
 
 
 def case_all_flag(tmp):
-    """`--all`：默认截断到 20 条并提示「另 N 条」，--all 必须打全量（否则大库只能另写脚本捞）。"""
+    """`--all`：默认截断并提示「另 N 条」，--all 打全量（否则大库只能另写脚本捞）。"""
     cards = {f"personal/card-{i}.md": card(title=f"卡{i}", h1=f"另一标题{i}") for i in range(25)}
     rows = [f"| 卡{i} | 结论 | personal/card-{i}.md |" for i in range(25)]
     root = make_kb(tmp, cards, index(rows))
     rc, out = run(CHECK, root)
-    truncated = rc == 1 and "另 5 条" in out
+    truncated = rc == 0 and "另 5 条" in out
     rc2, out2 = run(CHECK, root, "--all")
-    full = rc2 == 1 and "… 另" not in out2 and out2.count("正文 H1 ≠ YAML title") == 25
+    full = rc2 == 0 and "… 另" not in out2 and out2.count("正文 H1 ≠ YAML title") == 25
     return truncated and full, f"默认截断={truncated} / --all 全量={full}"
 
 
 def case_strict(tmp):
-    """`--strict`：需人判 > 0 时退出码 2（打印了却 exit 0，CI 等于没报）。"""
+    """`sync --strict`：需人判 > 0 时退出码 2（打印了却 exit 0，CI 等于没报）。"""
     root = make_kb(tmp, {"personal/card.md": card(body="只有正文。\n")},
                    index(["| 卡片标题 | 结论 | personal/card.md |"]))
     rc_plain, _ = run(SYNC, root, "--write")
     rc_strict, out = run(SYNC, root, "--write", "--strict")
     return rc_plain == 0 and rc_strict == 2 and "--strict" in out, \
         f"默认 rc={rc_plain} / --strict rc={rc_strict}"
+
+
+def case_dead_link(tmp):
+    """死链（硬）：INDEX 行指向不存在的文件 → 退出码 1，且点名文件列。"""
+    root = make_kb(tmp, {"personal/card.md": card()},
+                   index(["| 卡片标题 | 结论 | personal/card.md |",
+                          "| 幽灵卡 | 幽灵结论 | personal/ghost.md |"]))
+    rc, out = run(CHECK, root)
+    return rc == 1 and "死链" in out and "ghost.md" in out, f"rc={rc}"
+
+
+def case_missing_registration(tmp):
+    """漏登记（硬）：卡在库里但 INDEX 没有入口 → 退出码 1（知识在但找不到）。"""
+    root = make_kb(tmp, {"personal/card.md": card()}, index([]))
+    rc, out = run(CHECK, root)
+    return rc == 1 and "无登记行" in out, f"rc={rc}"
+
+
+def case_spec_never_red(tmp):
+    """规格项永不默认报红：命名违规 → rc 0；只有 --strict 才 2。"""
+    root = make_kb(tmp, {"personal/Bad_Name.md": card()},
+                   index(["| 卡片标题 | 结论 | personal/Bad_Name.md |"]))
+    rc, out = run(CHECK, root)
+    soft = rc == 0 and "规格" in out and "INDEX 入口   ✓" in out
+    rc2, _ = run(CHECK, root, "--strict")
+    return soft and rc2 == 2, f"默认 rc={rc} / --strict rc={rc2}"
+
+
+def case_ledger(tmp):
+    """账本三态：--baseline 入账 → 再体检算存量（strict 也不红）→ 修好后销账。"""
+    root = make_kb(tmp, {"personal/card.md": card(h1="另一个标题")},
+                   index(["| 卡片标题 | 结论 | personal/card.md |"]))
+    _, out_new = run(CHECK, root)
+    new_seen = "新增 1" in out_new
+    run(CHECK, root, "--baseline")
+    ledger = os.path.exists(os.path.join(root, ".qwiki-maintenance.json"))
+    _, out_old = run(CHECK, root)
+    stock = ledger and "存量 1 ／ 新增 0" in out_old
+    rc_strict, _ = run(CHECK, root, "--strict")
+    (root / "personal/card.md").write_text(card(), encoding="utf-8")   # 修好那张卡
+    _, out_fix = run(CHECK, root, "--baseline")
+    empty = '"baseline": {}' in read(root, ".qwiki-maintenance.json")
+    return new_seen and stock and rc_strict == 0 and empty, \
+        f"入账={new_seen}/{ledger} 存量={stock} strict rc={rc_strict} 销账={empty}"
 
 
 CASES = [
@@ -217,6 +263,10 @@ CASES = [
     case_summary_preserved,
     case_all_flag,
     case_strict,
+    case_dead_link,
+    case_missing_registration,
+    case_spec_never_red,
+    case_ledger,
 ]
 
 
@@ -232,7 +282,7 @@ def main(argv):
                 ok, detail = False, f"{type(exc).__name__}: {exc}"
         failed += not ok
         name = fn.__doc__.strip().split("\n")[0]
-        print(f"  {'✓' if ok else '✗'} {fn.__name__:<24s} {name}")
+        print(f"  {'✓' if ok else '✗'} {fn.__name__:<26s} {name}")
         if verbose or not ok:
             print(f"      {detail}")
     print()

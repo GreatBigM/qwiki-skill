@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 """qwiki 一致性自检 —— 把 SCHEMA / SKILL 的约定变成可执行断言。
 
-用法:  python3 qwiki-check.py [知识库根目录]        # 默认 ~/qwiki
-       python3 qwiki-check.py ~/qwiki --quiet      # 只打失败项与汇总
-       python3 qwiki-check.py ~/qwiki --all        # 失败明细打全量（默认截断到 20 条）
-退出码: 0 = 全过；1 = 有失败项（可直接串进 hook / CI）
+用法:  python3 qwiki-check.py [知识库根目录]        # 默认 ~/qwiki，体检（只读）
+       python3 qwiki-check.py ~/qwiki --quiet      # 只打两栏结论
+       python3 qwiki-check.py ~/qwiki --all        # 明细打全量（默认截断）
+       python3 qwiki-check.py ~/qwiki --baseline   # 把当前规格项存进账本（唯一写模式）
+       python3 qwiki-check.py ~/qwiki --strict     # 新增规格项也返回非零（默认不管）
+
+退出码：0 = 可用（规格项不影响）；1 = INDEX 入口坏了（知识「找不到」）；
+        2 = 仅 --strict 时的规格新增项。**规格式样不参与默认退出码**——
+        知识库的核心是「找得到」，不是「排版整齐」。
 
 设计取舍：
 - **只读**，不改任何文件；发现的问题由 AI 按 SKILL §sync 处置。
@@ -13,6 +18,8 @@
 - 判定口径全部来自 SCHEMA：卡片集 = `personal/*.md` + `projects/<项目>/**/*.md`，
   排除 `resource/`（素材）、`scripts/`（根层 .md 一律视为卡片——2026-10-13 起无例外）。
 """
+import datetime
+import json
 import os
 import re
 import sys
@@ -186,17 +193,19 @@ def check_card_headers(root, cards, rows):
     return "卡片头部（H1/title 同串 / `>` 结论行 / 依据·状态）", not bad, bad
 
 
-def check_index_projection(root, cards, rows):
-    """INDEX 两列 = 卡片集的正投影；段头由路径推出；一卡一行。"""
+def check_index_entries(root, cards, rows):
+    """INDEX 入口（硬）：每行指向真实存在的卡、一卡一行、段头与路径一致、不漏登记。
+
+    这一层坏了 = 「INDEX 说有 / 没有」与事实不符，检索会给出空结果或根本找不到。
+    其余问题（标题写旧了、总结超长）不影响目录可用，归「规格」。
+    """
     bad, seen = [], set()
     pd = os.path.join(root, "projects")
     projects = {d for d in os.listdir(pd) if os.path.isdir(os.path.join(pd, d))} if os.path.isdir(pd) else set()
     for r in rows:
-        if r["key"].startswith("projects/"):
-            bad.append(f"INDEX:{r['line']} 文件列带 `projects/` 前缀（应写 `<项目>/<slug>.md`，省略前缀）")
         rel = resolve(root, r["key"])
         if rel is None:
-            bad.append(f"INDEX:{r['line']} 文件列指向不存在的文件（{r['key']}）")
+            bad.append(f"INDEX:{r['line']} 死链：文件列指向不存在的文件（{r['key']}）")
             continue
         if rel in seen:
             bad.append(f"INDEX:{r['line']} 「{os.path.basename(rel)}」占了多行（一卡一行）")
@@ -204,30 +213,18 @@ def check_index_projection(root, cards, rows):
         want = section_of(rel, projects)
         if want and r.get("section") and want != r["section"]:
             bad.append(f"INDEX:{r['line']} 段头 `## {r['section']}` 与卡片路径不符（应在 `## {want}`）")
-        fm, body = split(open(os.path.join(root, rel), encoding="utf-8").read())
-        t, s = fm_field(fm, "title"), summary_line(body)
-        if t and r["title"] != t:
-            bad.append(f"INDEX:{r['line']} 标题列 ≠ 卡片 title\n      INDEX: {r['title'][:60]}\n      title: {t[:60]}")
-        if not r["summary"]:
-            bad.append(f"INDEX:{r['line']} 总结列为空")
-        elif s and r["summary"] != s:
-            bad.append(f"INDEX:{r['line']} 总结列 ≠ 卡片 `>` 行\n      INDEX: {r['summary'][:60]}\n      `>`  : {s[:60]}")
     missing = [c for c in cards if c not in seen]
     bad += [f"{c}: 有卡但 INDEX 无登记行" for c in missing]
-    return "INDEX 正投影（标题列 / 总结列 / 段头 / 一卡一行 / 无漏登记）", not bad, bad
+    return "INDEX 入口（死链 / 一卡一行 / 段头 / 漏登记）", not bad, bad
 
 
-def check_index_clean(root, cards, rows):
-    """INDEX 只登记卡片；无死链；总结列长度。"""
+def check_index_table(root, cards, rows):
+    """INDEX 结构（硬）：段头合法、表头与分隔行完整、不混入素材行。"""
     bad = []
     for r in rows:
         seg = [x for x in r["key"].split("/") if x]
         if any(x in SKIP_DIRS - {".git"} for x in seg):
             bad.append(f"INDEX:{r['line']} 素材/脚本误登本表（{r['key']}）")
-        if resolve(root, r["key"]) is None:
-            bad.append(f"INDEX:{r['line']} 死链（{r['key']}）")
-        if r["summary"].startswith(("#", "|", "!")) or len(r["summary"]) > MAX_SUMMARY:
-            bad.append(f"INDEX:{r['line']} 总结列异常（{len(r['summary'])} 字符，应以摘要开头且 ≤{MAX_SUMMARY}）")
     # 段头须属 {## personal, ## common, ## <projects 实际目录名>}（SCHEMA §INDEX 登记规则）
     pd = os.path.join(root, "projects")
     allowed = {"personal", "common"} | (
@@ -258,7 +255,32 @@ def check_index_clean(root, cards, rows):
                     if set(l2.strip()) <= set("|-: "):
                         bad.append(f"INDEX:{ln2} 分隔行出现在数据行之后")
                 tbl = []
-    return "INDEX 纯度（只登记卡片 / 无死链 / 摘要长度 / 表体完整）", not bad, bad
+    return "INDEX 结构（段头合法 / 表体完整 / 不混素材）", not bad, bad
+
+
+def check_index_projection(root, cards, rows):
+    """INDEX 投影（软）：标题列 = title、总结列 = `>` 首行、总结列不空不超长。
+
+    投影漂移不影响「找得到」，只影响「显示得准」；`qwiki-sync.py --write` 一条命令就修。
+    """
+    bad = []
+    for r in rows:
+        rel = resolve(root, r["key"])
+        if rel is None:
+            continue  # 死链由「INDEX 入口」报，不重复计
+        if r["key"].startswith("projects/"):
+            bad.append(f"INDEX:{r['line']} 文件列带 `projects/` 前缀（应写 `<项目>/<slug>.md`，省略前缀）")
+        fm, body = split(open(os.path.join(root, rel), encoding="utf-8").read())
+        t, s = fm_field(fm, "title"), summary_line(body)
+        if t and r["title"] != t:
+            bad.append(f"INDEX:{r['line']} 标题列 ≠ 卡片 title\n      INDEX: {r['title'][:60]}\n      title: {t[:60]}")
+        if not r["summary"]:
+            bad.append(f"INDEX:{r['line']} 总结列为空")
+        elif s and r["summary"] != s:
+            bad.append(f"INDEX:{r['line']} 总结列 ≠ 卡片 `>` 行\n      INDEX: {r['summary'][:60]}\n      `>`  : {s[:60]}")
+        if r["summary"].startswith(("#", "|", "!")) or len(r["summary"]) > MAX_SUMMARY:
+            bad.append(f"INDEX:{r['line']} 总结列异常（{len(r['summary'])} 字符，应以摘要开头且 ≤{MAX_SUMMARY}）")
+    return "INDEX 投影（标题列 / 总结列）", not bad, bad
 
 
 def check_links(root, cards, rows):
@@ -488,45 +510,142 @@ def naming_hints(root, cards, rows):
 
 
 CHECKS = [
-    check_card_headers,
-    check_index_projection,
-    check_index_clean,
-    check_links,
-    check_material_paths,
-    check_naming,
-    check_slug_unique,
-    check_upward_links,
-    check_track_ownership,
-    check_material_no_header,
-    check_yaml,
+    # 硬错：INDEX 与事实不符（说有→不存在 / 有卡→无入口 / 放错段 / 表坏了）
+    (check_index_entries, "index"),
+    (check_index_table, "index"),
+    # 规格：不影响「找得到」，只影响「写得齐不齐」
+    (check_card_headers, "spec"),
+    (check_index_projection, "spec"),
+    (check_links, "spec"),
+    (check_material_paths, "spec"),
+    (check_naming, "spec"),
+    (check_slug_unique, "spec"),
+    (check_upward_links, "spec"),
+    (check_track_ownership, "spec"),
+    (check_material_no_header, "spec"),
+    (check_yaml, "spec"),
 ]
+
+# 规格项的稳定键：<对象>::<规则码>。用于账本记账（版本代差不参与，见 SKILL §sync）
+SPEC_CODES = [
+    (r"正文 H1 ≠ YAML title", "h1-title"),
+    (r"H1 不在正文首位", "h1-first"),
+    (r"不是 `>` 引言行", "quote-block"),
+    (r"首行是出处/状态", "prov-first"),
+    (r"缺 `> 依据`", "evidence-line"),
+    (r"相关段标题须为", "related-heading"),
+    (r"无 YAML 头", "yaml-header"),
+    (r"文件名含下划线|文件名含大写|文件名含空格|日期是后缀", "naming"),
+    (r"标题列", "index-title"),
+    (r"总结列", "index-summary"),
+    (r"不是卡片|带项目前缀", "links"),
+    (r"素材路径|旧目录名", "material-path"),
+    (r"slug「", "slug-dup"),
+    (r"上行边", "upward-link"),
+    (r"轨迹卡", "track-owner"),
+    (r"素材/脚本带 YAML 头", "material-header"),
+    (r"YAML", "yaml-parse"),
+]
+
+LEDGER = ".qwiki-maintenance.json"
+
+
+def load_ledger(root):
+    """账本：baseline（存量，不再提醒）+ acked（人确认过，永不再提）。读不到就当空。"""
+    path = os.path.join(root, LEDGER)
+    try:
+        with open(path, encoding="utf-8") as fh:
+            data = json.load(fh)
+        return {"baseline": dict(data.get("baseline") or {}),
+                "acked": dict(data.get("acked") or {})}
+    except Exception:
+        return {"baseline": {}, "acked": {}}
+
+
+def save_ledger(root, data):
+    with open(os.path.join(root, LEDGER), "w", encoding="utf-8") as fh:
+        json.dump(data, fh, ensure_ascii=False, indent=2, sort_keys=True)
+        fh.write("\n")
+
+
+def spec_key(msg, rows):
+    """把一条规格失败压成稳定键；INDEX 行按行号回查文件列（行号会动，文件列不会）。"""
+    code = next((c for pat, c in SPEC_CODES if re.search(pat, msg)), "other")
+    if msg.startswith("INDEX:"):
+        ln = re.match(r"INDEX:(\d+)", msg)
+        key = next((r["key"] for r in rows if ln and r["line"] == int(ln.group(1))), "INDEX")
+        return f"{key}::{code}"
+    return f"{msg.split(':', 1)[0].strip()}::{code}"
 
 
 def main(argv):
     root = os.path.expanduser(argv[0]) if argv and not argv[0].startswith("-") else os.path.expanduser("~/qwiki")
     quiet = "--quiet" in argv or "-q" in argv
     show_all = "--all" in argv
+    strict = "--strict" in argv
+    baseline_mode = "--baseline" in argv
     if not os.path.isdir(root):
-        print(f"✗ 不是目录：{root}")
+        print(f"x 不是目录：{root}")
         return 1
     cards, rows = card_files(root), index_rows(root)
-    print(f"qwiki 自检：{root}")
+    print(f"qwiki 体检：{root}")
     print(f"  卡片 {len(cards)} 张 ｜ INDEX {len(rows)} 行\n")
-    failed, skipped, failed_names = 0, 0, []
-    for fn in CHECKS:
+
+    hard, spec, skipped = [], [], []
+    for fn, tier in CHECKS:
         name, ok, detail = fn(root, cards, rows)
-        print(f"  {'⊘' if ok is None else ('✓' if ok else '✗')} {name}")
-        if ok is not True:
+        if ok is None:
+            skipped.append(name)
+        elif ok is False:
+            (hard if tier == "index" else spec).append((name, detail))
+
+    ledger = load_ledger(root)
+    known = set(ledger["baseline"]) | set(ledger["acked"])
+    items = [(spec_key(m, rows), m) for _, d in spec for m in d]
+    new_items = [(k, m) for k, m in items if k not in known]
+    old_count = len(items) - len(new_items)
+
+    if baseline_mode:
+        today = datetime.date.today().isoformat()
+        current = {k for k, _ in items}
+        ledger["baseline"] = {k: ledger["baseline"].get(k, today) for k in sorted(current)}
+        save_ledger(root, ledger)
+        dropped = len(known - current - set(ledger["acked"]))
+        print(f"账本已更新：存量 {len(current)} 项入 baseline"
+              + (f"，销账 {dropped} 项" if dropped else "")
+              + f"\n  文件：{os.path.join(root, LEDGER)}\n")
+        return 0
+
+    # ── 硬错：只有这一栏配叫「错」──
+    if hard:
+        for name, detail in hard:
+            print(f"  INDEX 入口   ✗ {name}（{len(detail)} 处）")
             shown = detail if show_all else detail[:20]
             for d in shown:
                 print(f"      {d}")
             if len(detail) > len(shown):
                 print(f"      … 另 {len(detail) - len(shown)} 条（--all 打全量）")
-        if ok is False:
-            failed += 1
-            failed_names.append(name)
-        elif ok is None:
-            skipped += 1
+    else:
+        print("  INDEX 入口   ✓ 完整（每行都对得上卡、每张卡都有入口）")
+
+    # ── 规格：只记账，不报警 ──
+    if spec:
+        head = f"  {'规格':<11}— {len(items)} 项（存量 {old_count} ／ 新增 {len(new_items)}）"
+        print(head)
+        for name, detail in spec:
+            print(f"      · {name.split('（')[0]}：{len(detail)}")
+        shown = items if show_all else new_items
+        limit = len(shown) if show_all else 20
+        for _, m in shown[:limit]:
+            print(f"      - {m}")
+        if len(shown) > limit:
+            print(f"      … 另 {len(shown) - limit} 条（--all 打全量）")
+    else:
+        print(f"  {'规格':<11}✓ 无待维护项")
+
+    if skipped:
+        print(f"  其他         ⊘ {len(skipped)} 项未验证（缺 PyYAML，装上下次会跑）")
+
     hints = naming_hints(root, cards, rows)
     if hints and not quiet:
         shown_hints = hints if show_all else hints[:20]
@@ -535,17 +654,20 @@ def main(argv):
             print(f"    · {h}")
         if len(hints) > len(shown_hints):
             print(f"    … 另 {len(hints) - len(shown_hints)} 条（--all 打全量）")
-    if any("正投影" in n for n in failed_names):
-        print("\n提示：投影类红灯（标题列 / 总结列与卡片对不上）不用手改 —— "
-              "跑 `python3 scripts/qwiki-sync.py <库根> --write` 重建 INDEX 后再自检。")
+
     print()
-    if failed:
-        print(f"{failed} 项未通过 —— 按 SKILL §sync 处置")
-    elif skipped:
-        print(f"{len(CHECKS) - skipped} 项通过 · {skipped} 项跳过（未验证）")
+    if hard:
+        print(f"INDEX 入口 {len(hard)} 处错 —— 这会让知识『找不到』，先修这个；规格项都是保养，不着急。")
+        return 1
+    if strict and new_items:
+        print(f"INDEX 入口完整；--strict 下新增规格项 {len(new_items)} 项 → 退出码 2。")
+        return 2
+    if items:
+        print(f"可用。{len(items)} 条规格建议（存量 {old_count} ／ 新增 {len(new_items)}），"
+              "不影响检索；改写那张卡时会顺手重生。")
     else:
-        print("全部通过")
-    return 1 if failed else 0
+        print("可用，且没有待维护项。")
+    return 0
 
 
 if __name__ == "__main__":
