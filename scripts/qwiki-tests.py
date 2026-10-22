@@ -30,6 +30,7 @@ HERE = Path(__file__).resolve().parent
 CHECK = HERE / "qwiki-check.py"
 SYNC = HERE / "qwiki-sync.py"
 SEARCH = HERE / "qwiki-search.py"
+BACKUP = HERE / "qwiki-backup.py"
 PY = sys.executable
 
 CARD = """---
@@ -332,6 +333,24 @@ def case_search_tag(tmp):
     return ok, f"仅标签={len(only_tag['results'])} 标签+词={len(tagged_q['results'])} 未知标签={len(none['results'])}"
 
 
+def case_backup(tmp):
+    """备份：打出的 bundle 必须可校验、可克隆；目标落在库内要拒绝。"""
+    import subprocess as sp
+    kb = Path(tmp) / "kb"
+    (kb / "personal").mkdir(parents=True)
+    (kb / "personal/a.md").write_text(card(), encoding="utf-8")
+    (kb / "INDEX.md").write_text(index(["| 卡片标题 | 结论 | personal/a.md |"]), encoding="utf-8")
+    for cmd in (["init", "-q"], ["add", "-A"],
+                ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "init"]):
+        sp.run(["git", "-C", str(kb), *cmd], capture_output=True)
+    target = str(Path(tmp) / "out" / "kb.bundle")
+    rc, out = run(BACKUP, kb, target)
+    ok_bundle = rc == 0 and os.path.exists(target) and \
+        sp.run(["git", "bundle", "verify", target], capture_output=True).returncode == 0
+    rc2, _ = run(BACKUP, kb, str(kb / "inside.bundle"))
+    return ok_bundle and rc2 == 1, f"备份 rc={rc} 库内拒绝 rc={rc2}"
+
+
 def case_tag_facets(tmp):
     """标签三面（规格）：项目与路径不符 / 缺二级关键词都报出来，但不阻断（rc 0）。"""
     wrong = card(title="标签错卡", tags="[项目/nope, 模块/wifi, 关键词1/甲]")
@@ -365,6 +384,7 @@ CASES = [
     case_search_no_hit,
     case_search_tag,
     case_tag_facets,
+    case_backup,
 ]
 
 

@@ -1,7 +1,7 @@
 ---
 name: qwiki
 description: 个人知识库管理：卡片索引、知识沉淀、自动检索，AI 替你积累项目经验。
-version: 2.22.0
+version: 2.23.0
 author: GreatBigM
 license: MIT
 category: knowledge
@@ -298,6 +298,7 @@ INDEX 条目数、已入驻项目、知识文件数。
 - 宪法（与 SKILL.md 平级，唯一真相源）：`SCHEMA.md`（随安装拷贝）
 - init 模板（建库）：`templates/index.md`
 - 卡片模板（生成卡：**先定用途**；聚合卡 / 独立卡由内容推导）：`templates/card-aggregate.md`（聚合卡）、`templates/card-track.md`（独立·轨迹卡）、`templates/card-measurement.md`（独立·实测卡）、`templates/card-issue.md`（独立·问题说明卡）、`templates/card-design.md`（独立·设计说明卡）、`templates/note-general.md`（独立·随笔卡）；审查卡走**候选骨架**（`type: card`）、机制·手册类走自由骨架（`type: note`）
+- **备份**：`scripts/qwiki-backup.py`（打成单个 git bundle，`git bundle verify` 自证、可 `git clone` 恢复；建议每日覆盖到一个**库所在盘之外**的位置）
 - **检索**：`scripts/qwiki-search.py`（读 INDEX 四列做面过滤与标题/结论匹配，用 `rg` 扫正文兜底；`--project` / `--module` / `--type` / `--tag` 按面过滤，`--json` 给 agent 用，`--stats` 看规模；无数据库、无中间索引文件）
 - **投影生成**：`scripts/qwiki-sync.py`（INDEX 两列由卡片推出来；`--write` 落盘，修复投影类红灯不用手改；`--strict` 让「需人判」返回非零）
 - **自检脚本**：`scripts/qwiki-check.py`（SCHEMA/SKILL 约定的可执行版：卡片头部 / 投影 / 纯度 / 双链 / 素材 / 命名 / slug / 可达 / 轨迹 / 带头 / YAML；只读、仅需 python3 标准库，PyYAML 可选，缺库时该项标「跳过」不计通过；`--all` 打全量明细）
