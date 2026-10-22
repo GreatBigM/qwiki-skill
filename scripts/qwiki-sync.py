@@ -47,8 +47,23 @@ qc = _load_checker()
 MAX_SUMMARY = qc.MAX_SUMMARY
 
 
-def row_line(title, summary, key):
-    return f"| {title} | {summary} | {key} |"
+def row_line(title, summary, key, facets=""):
+    return f"| {title} | {summary} | {key} | {facets} |"
+
+
+def facets_of(fm):
+    """卡片 tags → INDEX 的分类列（项目/模块/类型）。三面缺一就留空位，不猜。"""
+    tags = _tags(fm)
+    proj = next((t.split("/", 1)[1] for t in tags if t.startswith("项目/")), "")
+    mod = next((t.split("/", 1)[1] for t in tags if t.startswith("模块/")), "")
+    typ = next((t.split("/", 1)[1] for t in tags if t.startswith("类型/")), "")
+    return "/".join([proj or "-", mod or "-", typ or "-"])
+
+
+def _tags(fm):
+    raw = qc.fm_field(fm, "tags")
+    inner = qc.re.search(r"\[(.*?)\]", raw or "")
+    return [t.strip() for t in (inner.group(1) if inner else "").split(",") if t.strip()]
 
 
 def canonical_key(rel):
@@ -89,7 +104,7 @@ def main(argv):
         if "|" in (title or "") or "|" in (summary or ""):
             unsafe.add(rel)
             manual.append(f"{rel}: title/总结含 `|`，会撑破表格；改写后再同步")
-        ident[rel] = (title, summary or "")
+        ident[rel] = (title, summary or "", facets_of(fm))
 
     index_path = os.path.join(root, "INDEX.md")
     if not os.path.exists(index_path):
@@ -121,7 +136,7 @@ def main(argv):
         if rel in unsafe:
             out.append(line)
             continue
-        new_title, new_summary = ident[rel]
+        new_title, new_summary, new_facets = ident[rel]
         new_title = new_title or title
         if not new_summary or qc.PROV_RE.match(new_summary):
             new_summary = summary
@@ -129,14 +144,14 @@ def main(argv):
         stat["title"] += title != new_title
         stat["summary"] += summary != new_summary
         stat["path"] += (m.group(0) if m else path) != new_key
-        out.append(row_line(new_title, new_summary, new_key))
+        out.append(row_line(new_title, new_summary, new_key, new_facets))
 
     added = []
     for rel in cards:
         if rel in seen:
             continue
         section = qc.section_of(rel, projects)
-        title, summary = ident[rel]
+        title, summary, _ = ident[rel]
         if rel in unsafe or (summary and qc.PROV_RE.match(summary)):
             manual.append(f"{rel}: 有卡但 INDEX 无登记行；总结不可用（含 `|` 或首行是出处），未自动补")
             continue
@@ -149,7 +164,7 @@ def main(argv):
             manual.append(f"{rel}: 有卡但 INDEX 无 `{head}` 段，无法插入")
             continue
         end = next((i for i in range(start + 1, len(out)) if out[i].startswith("## ")), len(out))
-        row = row_line(title, summary, canonical_key(rel))
+        row = row_line(title, summary, canonical_key(rel), ident[rel][2])
         rows = [i for i in range(start + 1, end) if is_table_row(out[i])]
         sep = next((i for i in range(start + 1, end) if out[i].startswith("|---")), None)
         if rows:
@@ -157,8 +172,22 @@ def main(argv):
         elif sep is not None:
             out.insert(sep + 1, row)
         else:
-            out[start + 1:start + 1] = ["", "| 标题 | 总结 | 文件 |", "|------|------|------|", row]
+            out[start + 1:start + 1] = ["", "| 标题 | 总结 | 文件 | 分类 |",
+                                        "|------|------|------|------|", row]
         added.append(f"补登记：{canonical_key(rel)} → ## {section}")
+
+    # 旧三列表 → 四列（表头 / 分隔行 / 数据行一起补，避免一张表两种形状）
+    fixed = []
+    for ln in out:
+        pipes = ln.count("|")
+        if ln.startswith("|") and "标题" in ln and pipes == 4:
+            ln = "| 标题 | 总结 | 文件 | 分类 |"
+        elif ln.startswith("|") and set(ln.strip()) <= set("|-: ") and pipes == 4:
+            ln = "|------|------|------|------|"
+        elif ln.startswith("|") and ".md" in ln and pipes == 4:
+            ln = ln.rstrip().rstrip("|").rstrip() + " | - |"
+        fixed.append(ln)
+    out = fixed
 
     print(f"qwiki 投影同步：{root}")
     print(f"  卡片 {len(cards)} 张 ｜ INDEX {len(qc.index_rows(root))} 行 ｜ "

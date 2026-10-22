@@ -1,56 +1,40 @@
 #!/usr/bin/env python3
-"""qwiki 检索 —— 磁盘倒排（SQLite FTS5，contentless），按需取卡，不把整库读进上下文。
+"""qwiki 检索 —— 只读 INDEX + `rg` 扫正文，按面过滤、按字段加权排序。
 
 用法:
   python3 qwiki-search.py [知识库根] <关键词...>          # 默认 ~/qwiki，取前 10 条
   python3 qwiki-search.py <库根> <关键词...> --limit 5
-  python3 qwiki-search.py <库根> <关键词...> --json       # 机器可读（给 agent 用）
-  python3 qwiki-search.py <库根> --stats                  # 索引现状（文档数 / 体积 / 更新量）
-  python3 qwiki-search.py <库根> <关键词...> --rebuild    # 全量重建
+  python3 qwiki-search.py <库根> --project <项目>          # 只按面过滤（可不给关键词）
+  python3 qwiki-search.py <库根> --module <模块> --type <类型>
+  python3 qwiki-search.py <库根> <关键词...> --json        # 机器可读（给 agent 用）
+  python3 qwiki-search.py <库根> --stats                   # 规模与依赖现状
 
-索引落在 `<库根>/.qwiki-index.db`（生成物，按 mtime 增量更新）。**删掉不损失任何知识**：
-INDEX 仍是唯一入口，本脚本只是「按内容找卡」的加速器——命中之后仍然读卡、仍然沿 `[[...]]` 走。
+数据来源只有两样，都在库里、都可删可重建：
+  1. **INDEX.md**（四列：标题 / 总结 / 文件 / 分类）—— 面过滤与标题/结论匹配；
+  2. **`rg` 扫正文** —— 关键词不在标题/结论里时的召回。
 
-为什么是 SQLite FTS5（contentless），而不是「内存里一份 JSON」：
-  个人库的量级信封是万级。JSON 方案每次查询把整份索引读进内存，万卡时几十 MB、首字节以秒计。
-  FTS5 把倒排放在磁盘、只读命中的行；`content=''` 让索引**不存原文**，体积只有存文本方案的三分之一，
-  代价是列不可回读——所以排序改成「FTS5 召回候选 → 读那几十张卡自己算分」。
+不需要数据库：当初要它，是为了「全库 df 统计」与「正文倒排」；现在前者由**关键词分级**
+（关键词1 宽 / 关键词2 窄，作者已写死）替代，后者由 rg 承担（万卡库几十毫秒）。
 
-排序口径（与定稿一致）：字段权重 × IDF × (1+log tf)，标题/结论原串命中额外加分。
-中文分词用二元组；「什么 / 为什」这类高频词靠 IDF 自动降权。
+排序口径：标题命中 > 结论命中 > 正文命中；同字段内按词频微调。
+**检索只做定位**（返回路径 + 一行结论），读卡才是取知识。
 """
-import importlib.util
 import json
 import math
 import os
 import re
-import sqlite3
+import shutil
+import subprocess
 import sys
-import time
 from collections import Counter
-from pathlib import Path
 
-INDEX_NAME = ".qwiki-index.db"
-SCHEMA_VERSION = 6
-SHORTLIST = 800               # 精排上限：先按「命中词的 IDF 之和」粗排，取前 N 再算字段权重
-FIELD_WEIGHT = {"title": 6.0, "summary": 5.0, "tags": 3.0, "headings": 2.0, "body": 1.0}
-CJK_RUN = re.compile(r"[\u4e00-\u9fff]+|[a-z0-9_]+")   # 与 FTS5 的分词边界对齐（_ 保留）
-
-
-def _load_checker():
-    """复用 qwiki-check.py 的解析口径（卡片集 / YAML / 结论行 / 小标题）。"""
-    path = Path(__file__).with_name("qwiki-check.py")
-    spec = importlib.util.spec_from_file_location("qwiki_check", path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-qc = _load_checker()
+INDEX_NAME = "INDEX.md"
+CJK_RUN = re.compile(r"[\u4e00-\u9fff]+|[a-z0-9_]+")
+FIELD_WEIGHT = {"title": 6.0, "summary": 5.0, "body": 2.0}
 
 
 def tokens(text):
-    """中文二元组 + 单字；ASCII 词小写。索引与查询共用同一套切法。"""
+    """中文二元组 + 单字；ASCII 词小写。与写卡时的口径一致。"""
     out = []
     for run in CJK_RUN.findall((text or "").lower()):
         if re.match(r"[\u4e00-\u9fff]", run):
@@ -63,149 +47,91 @@ def tokens(text):
     return out
 
 
-def read_card(root, rel):
-    """→ (展示用字段, 各字段词频)。索引与精排共用这一套解析，不写第二份。"""
-    text = Path(root, rel).read_text(encoding="utf-8")
-    fm, body = qc.split(text)
-    fields = {
-        "title": qc.fm_field(fm, "title"),
-        "summary": qc.summary_line(body) or "",
-        "tags": " ".join(re.findall(r"\[([^\]]*)\]", qc.fm_field(fm, "tags"))),
-        "headings": " ".join(re.findall(r"(?m)^##\s+(.+)$", qc.strip_code(body))),
-        "body": body,
-    }
-    return ({"title": fields["title"], "summary": fields["summary"],
-             "tags": fields["tags"]},
-            {k: Counter(tokens(v)) for k, v in fields.items()})
-
-
-def connect(root, fresh=False):
+def load_index(root):
+    """解析 INDEX 四列；分类列形如 `<项目>/<模块>/<类型>`（缺失位写作 `-`）。"""
     path = os.path.join(root, INDEX_NAME)
-    if os.path.exists(path):
-        con0 = sqlite3.connect(path)
-        version = con0.execute("PRAGMA user_version").fetchone()[0]
-        con0.close()
-        if version != SCHEMA_VERSION:
-            fresh = True
-    if fresh:
-        for suffix in ("", "-wal", "-shm"):
-            if os.path.exists(path + suffix):
-                os.remove(path + suffix)
-    con = sqlite3.connect(path)
-    con.execute("PRAGMA journal_mode=WAL")
-    con.execute("PRAGMA synchronous=NORMAL")
-    con.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
-    con.execute("CREATE TABLE IF NOT EXISTS cards("
-                "id INTEGER PRIMARY KEY, path TEXT UNIQUE, mtime REAL, title TEXT, summary TEXT, "
-                "t_title TEXT, t_summary TEXT, t_tags TEXT, t_headings TEXT, tags TEXT)")
-    # contentless：只存倒排不存原文；detail=none 省掉位置信息（本方案不做短语匹配）
-    con.execute("CREATE VIRTUAL TABLE IF NOT EXISTS fts USING fts5("
-                "body, content='', contentless_delete=1, detail=none, "
-                "tokenize=\"unicode61 tokenchars '_'\")")
-    return con
+    rows, section = [], None
+    for ln, line in enumerate(open(path, encoding="utf-8"), 1):
+        m = re.match(r"^##\s+(\S.*?)\s*$", line)
+        if m:
+            section = m.group(1)
+            continue
+        if not line.startswith("|"):
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) < 3 or cells[0] in ("标题", "") or set(cells[0]) <= set("-: "):
+            continue
+        m2 = re.search(r"[^\s|`]+\.md", cells[2])
+        if not m2:
+            continue
+        key = m2.group(0)
+        path = key if key.startswith(("personal/", "projects/")) else ("projects/" + key)
+        rows.append({"line": ln, "section": section, "title": cells[0], "summary": cells[1],
+                     "key": key, "path": path, "facets": cells[3] if len(cells) > 3 else ""})
+    return rows
 
 
-def sync(con, root):
-    """按 mtime 增量更新：改过的卡重灌，删掉的卡清行。"""
-    cards = qc.card_files(root)
-    mtimes = {c: os.path.getmtime(os.path.join(root, c)) for c in cards}
-    known = dict(con.execute("SELECT path, mtime FROM cards"))
-    changed = [c for c in cards if known.get(c) != mtimes[c]]
-    removed = [c for c in known if c not in mtimes]
-    with con:
-        for path in removed:
-            row = con.execute("SELECT id FROM cards WHERE path = ?", (path,)).fetchone()
-            if row:
-                con.execute("DELETE FROM fts WHERE rowid = ?", (row[0],))
-            con.execute("DELETE FROM cards WHERE path = ?", (path,))
-        for path in changed:
-            display, counters = read_card(root, path)
-            raw_tags = display["tags"]
-            words = " ".join(" ".join(c.elements()) for c in counters.values())
-            con.execute("INSERT OR REPLACE INTO cards "
-                        "(path, mtime, title, summary, t_title, t_summary, t_tags, t_headings, tags) "
-                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                        (path, mtimes[path], display["title"], display["summary"],
-                         " ".join(counters["title"].elements()),
-                         " ".join(counters["summary"].elements()),
-                         " ".join(counters["tags"].elements()),
-                         " ".join(counters["headings"].elements()),
-                         "," + ",".join(sorted(t.strip().lower() for t in
-                                               re.findall(r"[^,\[\]]+", raw_tags) if t.strip())) + ","))
-            rowid = con.execute("SELECT id FROM cards WHERE path = ?", (path,)).fetchone()[0]
-            con.execute("DELETE FROM fts WHERE rowid = ?", (rowid,))
-            con.execute("INSERT INTO fts (rowid, body) VALUES (?, ?)", (rowid, words))
-    return len(changed) + len(removed)
+def norm_path(key):
+    if key.startswith(("personal/", "projects/")):
+        return key
+    return ("personal/" + key) if key.startswith("personal") else ("projects/" + key)
 
 
-def search(con, root, query, limit=10, tags=None):
-    """召回 = 各 token 命中集的并集；排序 = 字段权重 × IDF × (1+log tf)。
+def match_facets(row, facets):
+    """facets 形如 ['项目/<x>', '模块/<y>']；与分类列逐位比对。"""
+    if not facets:
+        return True
+    parts = (row["facets"] or "-/-/-").split("/")
+    parts += ["-"] * (3 - len(parts))
+    slot = {"项目": parts[0], "模块": parts[1], "类型": parts[2]}
+    for f in facets:
+        prefix, _, value = f.partition("/")
+        if prefix in slot:
+            if slot[prefix] != value:
+                return False
+        elif value and value not in row["facets"]:
+            return False
+    return True
 
-    为什么不用 FTS5 的 bm25 直接排序：它按文档长度归一，长卡（恰恰常是干货最多的卡）
-    会被系统性地压下去——实测目标卡在 bm25 里排到一百多名。召回与排序分开后，
-    召回只求「不漏」，排序用与定稿一致的公式。
-    """
-    toks = list(dict.fromkeys(tokens(query)))
-    tagged = None
-    for facet in (tags or []):
-        hit = {r[0] for r in con.execute(
-            "SELECT id FROM cards WHERE tags LIKE ?", (f"%,{facet.strip().lower()},%",))}
-        tagged = hit if tagged is None else (tagged & hit)
-    if tagged is not None and not toks:   # 只给面：列出这些标签下的卡
-        rows = con.execute("SELECT path, title, summary FROM cards WHERE id IN ("
-                           + ",".join("?" * len(tagged)) + ") ORDER BY path LIMIT ?",
-                           (*sorted(tagged), limit)) if tagged else []
-        return [(0.0, {"path": p, "title": t, "summary": sm}, []) for p, t, sm in rows]
-    if not toks:
-        return []
-    total = con.execute("SELECT COUNT(*) FROM cards").fetchone()[0] or 1
-    idf, postings = {}, {}
-    for t in toks:
-        rows = con.execute("SELECT rowid FROM fts WHERE fts MATCH ?", (t,)).fetchall()
-        postings[t] = {r[0] for r in rows}
-        idf[t] = math.log(1 + total / len(rows)) if rows else 0.0
-    live = [t for t in toks if idf[t] > 0]
-    if not live:
-        return []
-    cand = set().union(*(postings[t] for t in live))
-    if tagged is not None:
-        cand &= tagged
-    if len(cand) > SHORTLIST:
-        # 粗排：命中词的 IDF 之和（不看字段）。保证「命中所有词」的卡进短名单，
-        # 再把精排留给字段权重——万卡时这一步把几千个候选压到几百个。
-        cheap = {}
-        for tok in live:
-            for rid in postings[tok]:
-                cheap[rid] = cheap.get(rid, 0.0) + idf[tok]
-        cand = set(sorted(cheap, key=lambda r: -cheap[r])[:SHORTLIST])
-    ids = sorted(cand)
-    q = query.strip().lower()
-    scored = []
-    for chunk in range(0, len(ids), 200):
-        part = ids[chunk:chunk + 200]
-        rows = con.execute(
-            "SELECT id, path, title, summary, t_title, t_summary, t_tags, t_headings "
-            "FROM cards WHERE id IN (" + ",".join("?" * len(part)) + ")", part).fetchall()
-        for rid, path, title, summary, *fields in rows:
-            counts = [Counter((f or "").split()) for f in fields]
-            score = 0.0
-            # 四个重字段按词频加权；正文不存词频，只记「出现过」（权重最低，足够区隔）
-            for (field, weight), counter in zip(
-                    ((k, v) for k, v in FIELD_WEIGHT.items() if k != "body"), counts):
-                for tok in live:
-                    n = counter.get(tok)
-                    if n:
-                        score += weight * (1 + math.log(n)) * idf[tok]
-            for tok in live:
-                if rid in postings[tok]:
-                    score += FIELD_WEIGHT["body"] * idf[tok]
-            if q and q in (title or "").lower():
-                score += 6
-            elif q and q in (summary or "").lower():
-                score += 3
-            scored.append((score, {"path": path, "title": title, "summary": summary}, live[:8]))
-    scored.sort(key=lambda r: -r[0])
-    return scored[:limit]
+
+def body_hits(root, query):
+    """正文召回：rg 优先；没有 rg 就退回 Python 扫（慢但正确）。返回相对路径集合。"""
+    terms = [t for t in query.split() if t]
+    if not terms:
+        return set()
+    if shutil.which("rg"):
+        cmd = ["rg", "-l", "-i", "-F", "--no-messages", "--glob", "*.md", root]
+        for t in terms:
+            cmd += ["-e", t]
+        out = subprocess.run(cmd, capture_output=True, text=True).stdout
+        return {os.path.relpath(p, root) for p in out.splitlines() if p.strip()}
+    hits = set()
+    for dp, dn, fn in os.walk(root):
+        dn[:] = [d for d in dn if d not in ("resource", "scripts", ".git")]
+        for f in fn:
+            if not f.endswith(".md"):
+                continue
+            p = os.path.join(dp, f)
+            text = open(p, encoding="utf-8", errors="ignore").read().lower()
+            if any(t.lower() in text for t in terms):
+                hits.add(os.path.relpath(p, root))
+    return hits
+
+
+def score_row(row, q_tokens, phrase, in_body):
+    score = 0.0
+    for field in ("title", "summary"):
+        text = (row[field] or "").lower()
+        counter = Counter(tokens(text))
+        for tok in q_tokens:
+            n = counter.get(tok)
+            if n:
+                score += FIELD_WEIGHT[field] * (1 + math.log(n))
+        if phrase and phrase in text:
+            score += FIELD_WEIGHT[field] * 2
+    if in_body:
+        score += FIELD_WEIGHT["body"]
+    return score
 
 
 def main(argv):
@@ -229,55 +155,63 @@ def main(argv):
     if not os.path.isdir(root):
         print(f"x 不是目录：{root}")
         return 1
+    index_path = os.path.join(root, INDEX_NAME)
+    if not os.path.exists(index_path):
+        print(f"x 缺 INDEX.md：{index_path}（先跑 qwiki-sync.py --write）")
+        return 1
 
-    t0 = time.time()
-    con = connect(root, fresh="--rebuild" in flags)
-    try:
-        changed = sync(con, root)
-        elapsed = time.time() - t0
-        total = con.execute("SELECT COUNT(*) FROM cards").fetchone()[0]
-        db = os.path.join(root, INDEX_NAME)
-        size = sum(os.path.getsize(db + s) for s in ("", "-wal", "-shm") if os.path.exists(db + s))
-
-        if "--stats" in flags:
-            print(f"qwiki 索引：{root}")
-            print(f"  文档 {total} 张 ｜ {size / 1024:.0f} KB ｜ "
-                  + (f"本次更新 {changed} 张" if changed else "已是最新")
-                  + f"（{elapsed * 1000:.0f} ms）")
-            return 0
-
-        query = " ".join(words).strip()
-        if not query and not facets:
-            print("用法：qwiki-search.py [库根] <关键词...> [--tag 标签|--project x|--module x|--type x] [--limit N] [--json] [--stats] [--rebuild]")
-            return 1
-        results = search(con, root, query, limit, facets)
-        if "--json" in flags:
-            print(json.dumps({
-                "query": query,
-                "rebuilt": bool(changed),
-                "ms": round(elapsed * 1000),
-                "results": [{"path": info["path"], "title": info["title"],
-                             "summary": info["summary"], "score": round(score, 1),
-                             "matched": matched}
-                            for score, info, matched in results],
-            }, ensure_ascii=False, indent=2))
-            return 0
-
-        print(f"qwiki 检索：{query}" + (f" ［{' '.join(facets)}］" if facets else "") + f"（{total} 张卡"
-              + (f"，更新 {changed} 张索引" if changed else "") + f"，{elapsed * 1000:.0f} ms）\n")
-        if not results:
-            print("  没有命中。换个说法，或确认这张知识还没入库。")
-            return 0
-        for n, (score, info, matched) in enumerate(results, 1):
-            print(f"  {n}. {info['path']}   [{score:.1f}]")
-            print(f"     {info['title']}")
-            if info["summary"]:
-                print(f"     > {info['summary'][:90]}")
-            print(f"     命中：{' '.join(matched[:8])}")
-        print("\n下一步：读命中的那张卡；要沿关系走，看它的 `## 相关`。")
+    rows = load_index(root)
+    if "--stats" in flags:
+        size = os.path.getsize(index_path)
+        print(f"qwiki 检索面：{root}")
+        print(f"  INDEX {len(rows)} 行 ｜ {size / 1024:.0f} KB ｜ "
+              f"正文召回 {'rg' if shutil.which('rg') else 'Python 扫描（无 rg，慢）'}")
         return 0
-    finally:
-        con.close()
+
+    query = " ".join(words).strip()
+    if not query and not facets:
+        print("用法：qwiki-search.py [库根] <关键词...> [--project x] [--module x] [--type x] "
+              "[--tag 标签] [--limit N] [--json] [--stats]")
+        return 1
+
+    pool = [r for r in rows if match_facets(r, facets)]
+    body = body_hits(root, query) if query else set()
+    q_tokens = tokens(query)
+    phrase = query.lower().strip()
+    scored = []
+    for r in pool:
+        in_body = r["path"] in body or r["key"] in body
+        s = score_row(r, q_tokens, phrase, in_body) if query else 0.0
+        if query and not s:
+            continue
+        scored.append((s, r, in_body))
+    scored.sort(key=lambda x: -x[0])
+
+    if "--json" in flags:
+        print(json.dumps({
+            "query": query,
+            "facets": facets,
+            "results": [{"path": r["path"], "title": r["title"], "summary": r["summary"],
+                         "facets": r["facets"], "score": round(s, 1), "body": b}
+                        for s, r, b in scored[:limit]],
+        }, ensure_ascii=False, indent=2))
+        return 0
+
+    print(f"qwiki 检索：{query or '（仅按面过滤）'}"
+          + (f" ［{' '.join(facets)}］" if facets else "")
+          + f"（INDEX {len(rows)} 行 → 候选 {len(pool)}）\n")
+    if not scored:
+        print("  没有命中。换个说法，或确认这张知识还没入库。")
+        return 0
+    for n, (s, r, b) in enumerate(scored[:limit], 1):
+        print(f"  {n}. {r['path']}   [{s:.1f}]" + ("  ·正文命中" if b else ""))
+        print(f"     {r['title']}")
+        if r["summary"]:
+            print(f"     > {r['summary'][:90]}")
+        if r["facets"] and r["facets"] != "-/-/-":
+            print(f"     面：{r['facets']}")
+    print("\n下一步：读命中的那张卡；要沿关系走，看它的 `## 相关`。")
+    return 0
 
 
 if __name__ == "__main__":

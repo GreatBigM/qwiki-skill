@@ -47,7 +47,7 @@ tags: {tags}
 GOOD_BODY = "> 结论\n\n> 依据：fixture\n"
 FACET_TAGS = "[项目/personal, 模块/wifi, 关键词1/甲, 关键词2/乙]"   # 合规的三面标签
 
-INDEX_HEAD = "| 标题 | 总结 | 文件 |\n|------|------|------|"
+INDEX_HEAD = "| 标题 | 总结 | 文件 | 分类 |\n|------|------|------|------|"
 
 
 def card(title="卡片标题", h1=None, body=GOOD_BODY, tags="[]"):
@@ -55,8 +55,9 @@ def card(title="卡片标题", h1=None, body=GOOD_BODY, tags="[]"):
 
 
 def index(rows, section="personal"):
-    body = "\n".join(rows)
-    return f"## {section}\n\n{INDEX_HEAD}\n{body}\n"
+    """三列旧格式的 fixture 自动补上第四列（分类），避免每处手写。"""
+    padded = [r if r.count("|") >= 5 else r.rstrip().rstrip("|").rstrip() + " | - |" for r in rows]
+    return f"## {section}\n\n{INDEX_HEAD}\n" + "\n".join(padded) + "\n"
 
 
 def make_kb(tmp, cards, index_text):
@@ -128,7 +129,7 @@ def case_pipe_title(tmp):
     _, out = run(SYNC, root, "--write")
     after = read(root)
     no_broken = after == before and len([l for l in after.split("\n")
-                                         if l.startswith("|") and l.count("|") > 4]) == 0
+                                         if l.startswith("|") and l.count("|") > 5]) == 0
     return no_broken and "含 `|`" in out, f"INDEX 未变={after == before}"
 
 
@@ -286,18 +287,16 @@ def case_search_cjk(tmp):
         f"rc={rc} hits={paths}"
 
 
-def case_search_stale(tmp):
-    """索引失效自动重建：卡改了但没 --rebuild，也必须查到新词。"""
-    root = make_kb(tmp, {"personal/card.md": card(body="> 旧结论\n\n> 依据：fixture\n")},
-                   index(["| 卡片标题 | 旧结论 | personal/card.md |"]))
-    run(SEARCH, root, "旧结论")
-    (root / "personal/card.md").write_text(
-        card(body="> 新结论：奇美拉词\n\n> 依据：fixture\n"), encoding="utf-8")
+def case_search_body_only(tmp):
+    """正文独有词：不在标题/结论里，也必须能被召回（靠 rg 扫正文）。"""
+    body = "> 结论很短\n\n> 依据：fixture\n\n奇美拉词只在正文出现一次。\n"
+    root = make_kb(tmp, {"personal/card.md": card(body=body)},
+                   index(["| 卡片标题 | 结论很短 | personal/card.md |"]))
     rc, out = run(SEARCH, root, "奇美拉", "--json")
     import json as _json
     data = _json.loads(out)
     hit = [r for r in data["results"] if r["path"] == "personal/card.md"]
-    return rc == 0 and bool(hit) and data["rebuilt"] is True, f"rc={rc} rebuilt={data.get('rebuilt')}"
+    return rc == 0 and bool(hit) and hit[0]["body"] is True, f"rc={rc} hits={len(data['results'])}"
 
 
 def case_search_no_hit(tmp):
@@ -320,8 +319,8 @@ def case_search_tag(tmp):
                               tags="[项目/personal, 模块/内存, 关键词1/内存, 关键词2/回收]",
                               body="> 内存回收\n\n> 依据：fixture\n"),
     }
-    rows = ["| 甲 聚合生效 | 聚合生效 | personal/a.md |",
-            "| 乙 内存回收 | 内存回收 | personal/b.md |"]
+    rows = ["| 甲 聚合生效 | 聚合生效 | personal/a.md | personal/wifi/- |",
+            "| 乙 内存回收 | 内存回收 | personal/b.md | personal/内存/- |"]
     root = make_kb(tmp, cards, index(rows))
     import json as _json
     only_tag = _json.loads(run(SEARCH, root, "--module", "内存", "--json")[1])
@@ -362,7 +361,7 @@ CASES = [
     case_ledger,
     case_search_rank,
     case_search_cjk,
-    case_search_stale,
+    case_search_body_only,
     case_search_no_hit,
     case_search_tag,
     case_tag_facets,
