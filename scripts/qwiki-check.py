@@ -509,6 +509,62 @@ def naming_hints(root, cards, rows):
     return out
 
 
+# 标签三面（2026-10-22 定）：项目 / 模块 / 类型 + 关键词分级。
+# 词表是契约：新增取值要改这里 + SCHEMA，避免标签再次碎成一堆同义词。
+FACET_MODULES = {"wifi", "内核", "内存", "网络", "驱动", "USB", "音频", "烧录",
+                 "构建", "工具链", "应用", "知识库", "测试", "发布"}
+FACET_TYPES = {"审查", "实测", "优化", "否决", "复盘", "设计", "排查",
+               "修复", "迁移", "手册", "测试", "分析", "debug"}
+
+
+def _tags_of(fm):
+    """从 `tags: [a, b]` 里取出标签（不引 PyYAML）。"""
+    raw = fm_field(fm, "tags")
+    inner = re.search(r"\[(.*?)\]", raw or "")
+    return [t.strip() for t in (inner.group(1) if inner else "").split(",") if t.strip()]
+
+
+def check_tag_facets(root, cards, rows):
+    """标签三面（规格，不报红）：项目=路径、模块∈词表、一级唯一、二级≥1、级别连续。"""
+    pd = os.path.join(root, "projects")
+    projects = {d for d in os.listdir(pd) if os.path.isdir(os.path.join(pd, d))} if os.path.isdir(pd) else set()
+    bad, bare = [], 0
+    for rel in cards:
+        fm, _ = split(open(os.path.join(root, rel), encoding="utf-8").read())
+        if fm is None:
+            continue
+        tags = _tags_of(fm)
+        if not any(t.startswith(("项目/", "模块/", "关键词1/")) for t in tags):
+            bare += 1
+            continue
+        proj = [t.split("/", 1)[1] for t in tags if t.startswith("项目/")]
+        mods = [t.split("/", 1)[1] for t in tags if t.startswith("模块/")]
+        k1 = [t.split("/", 1)[1] for t in tags if t.startswith("关键词1/")]
+        k2 = [t.split("/", 1)[1] for t in tags if t.startswith("关键词2/")]
+        k3 = [t.split("/", 1)[1] for t in tags if t.startswith("关键词3/")]
+        want = section_of(rel, projects)
+        if len(proj) != 1:
+            bad.append(f"{rel}: 需要且仅需要一个 `项目/<x>`（现 {len(proj)} 个）")
+        elif want and proj[0] != want:
+            bad.append(f"{rel}: `项目/{proj[0]}` 与路径不符（应为 `项目/{want}`）")
+        if len(mods) != 1:
+            bad.append(f"{rel}: 需要且仅需要一个 `模块/<x>`（现 {len(mods)} 个）")
+        elif mods[0] not in FACET_MODULES:
+            bad.append(f"{rel}: 模块 `{mods[0]}` 不在词表内（{ '、'.join(sorted(FACET_MODULES)) }）")
+        if len(k1) != 1:
+            bad.append(f"{rel}: 关键词1 必须唯一（现 {len(k1)} 个）")
+        if not k2:
+            bad.append(f"{rel}: 缺关键词2（一级之后至少要有一个更窄的词）")
+        if k3 and not k2:
+            bad.append(f"{rel}: 有关键词3 但缺关键词2（级别不连续）")
+        for t in tags:
+            if t.split("/", 1)[0] not in ("项目", "模块", "类型", "关键词1", "关键词2", "关键词3"):
+                bad.append(f"{rel}: 标签 `{t}` 没有分面前缀（项目/模块/类型/关键词N）")
+    if bare:
+        bad.append(f"另有 {bare} 张卡仍是旧式自由标签（未分面）—— 属存量，批量改写时处理")
+    return "标签三面（项目 / 模块 / 关键词分级）", not bad, bad
+
+
 CHECKS = [
     # 硬错：INDEX 与事实不符（说有→不存在 / 有卡→无入口 / 放错段 / 表坏了）
     (check_index_entries, "index"),
@@ -523,6 +579,7 @@ CHECKS = [
     (check_upward_links, "spec"),
     (check_track_ownership, "spec"),
     (check_material_no_header, "spec"),
+    (check_tag_facets, "spec"),
     (check_yaml, "spec"),
 ]
 

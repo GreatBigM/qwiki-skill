@@ -1,7 +1,7 @@
 ---
 name: qwiki
 description: 个人知识库管理：卡片索引、知识沉淀、自动检索，AI 替你积累项目经验。
-version: 2.19.0
+version: 2.20.0
 author: GreatBigM
 license: MIT
 category: knowledge
@@ -208,7 +208,7 @@ AI:  执行操作 → 回报结果
 - **检索** = 四跳：① **命中**（两种入口，见下）；② **读卡**（H1 下摘要 → 各段）；③ **沿边走**（上行到聚合卡看同类／沿直链到对偶卡／跨族边走线）；④ 素材不在检索面——从引用它的卡的「模块边界 / 相关」段按路径找。反查"谁引用了我" = 全库 grep `[[slug]]`
 - **检索与取知识是两件事**：检索只做「定位到哪张卡」（返回路径 + 一行结论），**读卡才是取知识**（只读 1–2 张）
 - **定位分三级信号，逐级下沉**：
-  - **标签**（一级，最高精度）：`python3 scripts/qwiki-search.py <库根> --tag <标签>` 或 `"<关键词>" --tag <标签>`——Agent 已经从对话里知道关键词是什么，带上它就是显式过滤
+  - **标签面**（一级，最高精度）：`--project <项目>` / `--module <模块>` / `--type <类型>` / `--tag <完整标签>`——Agent 已经从对话里知道关键词是什么，带上它就是显式过滤；面可叠加（交集）
   - **简介**：查询词落在结论行里，权重仅次于标题
   - **正文**：细节型查询唯一的召回来源（实测：只出现在正文的词，去掉正文索引后 top-3 召回从满格掉到个位数百分比）
 - **入口按规模选**：`explore`（小库，读 INDEX 的标题+总结）／ `qwiki-search.py`（大库或关键词不在标题里；索引是生成物 `.qwiki-index.db`，卡改自动重建、删掉不丢知识）
@@ -238,7 +238,7 @@ AI:  执行操作 → 回报结果
   - 个人方法论/工作哲学 → `~/qwiki/personal/`
   - 跨项目知识（反模式/通用经验/工具坑，来源项目、适用多项目）→ `~/qwiki/projects/common/`
   - 项目特定知识 → 对应项目卡；分析报告/数据等素材 → 项目 `resource/`（素材不产卡）
-- **必填动作**（生成时自动做）：正文 `>` 首行 = 一句话结论（≤80）+ YAML `summary` = 长摘要（可多行，与 `>` 首行用途不同、不强求同串）+ INDEX 行交给 `qwiki-sync.py <库根> --write`
+- **必填动作**（生成时自动做）：正文 `>` 首行 = 一句话结论（≤80）+ YAML `summary` = 长摘要（可多行，与 `>` 首行用途不同、不强求同串）+ `tags` 按 §标签三面 填（项目 / 模块 / 类型? / 关键词1 / 关键词2…，按 df 宽→窄）+ INDEX 行交给 `qwiki-sync.py <库根> --write`
   - 「正文 `>` 行」指 `>` 引文块的**第一行**，内容必须是**一句话结论**（不是 YAML `summary` 的原文，也不是出处）——自检按「H1 后第一个 `>` 行」取值，把背景/定义/出处写在第一行会被判「总结列不是结论」；依据行另起一个 `>` 段落放后面
 - **卡片约束见 skill 根目录 `SCHEMA.md` §公共约定 + §YAML 头公约**（YAML 头 / 一句话结论 / 相关段 / 一张卡一个点 / 卡头自证）——本节不复述，避免两处措辞漂移
 - 正文段落为参考骨架（背景/要点/结论），按需取舍，**不强制 schema**——写什么算什么，后续可随时补充
@@ -298,7 +298,7 @@ INDEX 条目数、已入驻项目、知识文件数。
 - 宪法（与 SKILL.md 平级，唯一真相源）：`SCHEMA.md`（随安装拷贝）
 - init 模板（建库）：`templates/index.md`
 - 卡片模板（生成卡：**先定用途**；聚合卡 / 独立卡由内容推导）：`templates/card-aggregate.md`（聚合卡）、`templates/card-track.md`（独立·轨迹卡）、`templates/card-measurement.md`（独立·实测卡）、`templates/card-issue.md`（独立·问题说明卡）、`templates/card-design.md`（独立·设计说明卡）、`templates/note-general.md`（独立·随笔卡）；审查卡走**候选骨架**（`type: card`）、机制·手册类走自由骨架（`type: note`）
-- **检索**：`scripts/qwiki-search.py`（SQLite FTS5 磁盘倒排，contentless 不存原文；中文二元组；召回后按「字段权重 × IDF × log tf」精排；`--tag` 一级过滤，`--json` 给 agent 用，`--stats` 看规模；索引是生成物，删掉不丢知识）
+- **检索**：`scripts/qwiki-search.py`（SQLite FTS5 磁盘倒排，contentless 不存原文；中文二元组；召回后按「字段权重 × IDF × log tf」精排；`--project` / `--module` / `--type` / `--tag` 按面过滤，`--json` 给 agent 用，`--stats` 看规模；索引是生成物，删掉不丢知识）
 - **投影生成**：`scripts/qwiki-sync.py`（INDEX 两列由卡片推出来；`--write` 落盘，修复投影类红灯不用手改；`--strict` 让「需人判」返回非零）
 - **自检脚本**：`scripts/qwiki-check.py`（SCHEMA/SKILL 约定的可执行版：卡片头部 / 投影 / 纯度 / 双链 / 素材 / 命名 / slug / 可达 / 轨迹 / 带头 / YAML；只读、仅需 python3 标准库，PyYAML 可选，缺库时该项标「跳过」不计通过；`--all` 打全量明细）
 - **核心测试**：`scripts/qwiki-tests.py`（守卫每条一个 fixture：缺 `>` 不覆盖总结、出处首行、空段补表头、`|` 拒绝写表、段头错位、表体断裂、PyYAML 跳过、幂等、H1≠title；断言退出码 + 报错串 + 落盘结果，退出码即结论）

@@ -45,6 +45,7 @@ tags: {tags}
 """
 
 GOOD_BODY = "> 结论\n\n> 依据：fixture\n"
+FACET_TAGS = "[项目/personal, 模块/wifi, 关键词1/甲, 关键词2/乙]"   # 合规的三面标签
 
 INDEX_HEAD = "| 标题 | 总结 | 文件 |\n|------|------|------|"
 
@@ -187,7 +188,8 @@ def case_summary_preserved(tmp):
 
 def case_all_flag(tmp):
     """`--all`：默认截断并提示「另 N 条」，--all 打全量（否则大库只能另写脚本捞）。"""
-    cards = {f"personal/card-{i}.md": card(title=f"卡{i}", h1=f"另一标题{i}") for i in range(25)}
+    cards = {f"personal/card-{i}.md": card(title=f"卡{i}", h1=f"另一标题{i}", tags=FACET_TAGS)
+             for i in range(25)}
     rows = [f"| 卡{i} | 结论 | personal/card-{i}.md |" for i in range(25)]
     root = make_kb(tmp, cards, index(rows))
     rc, out = run(CHECK, root)
@@ -235,7 +237,7 @@ def case_spec_never_red(tmp):
 
 def case_ledger(tmp):
     """账本三态：--baseline 入账 → 再体检算存量（strict 也不红）→ 修好后销账。"""
-    root = make_kb(tmp, {"personal/card.md": card(h1="另一个标题")},
+    root = make_kb(tmp, {"personal/card.md": card(h1="另一个标题", tags=FACET_TAGS)},
                    index(["| 卡片标题 | 结论 | personal/card.md |"]))
     _, out_new = run(CHECK, root)
     new_seen = "新增 1" in out_new
@@ -244,7 +246,7 @@ def case_ledger(tmp):
     _, out_old = run(CHECK, root)
     stock = ledger and "存量 1 ／ 新增 0" in out_old
     rc_strict, _ = run(CHECK, root, "--strict")
-    (root / "personal/card.md").write_text(card(), encoding="utf-8")   # 修好那张卡
+    (root / "personal/card.md").write_text(card(tags=FACET_TAGS), encoding="utf-8")   # 修好那张卡
     _, out_fix = run(CHECK, root, "--baseline")
     empty = '"baseline": {}' in read(root, ".qwiki-maintenance.json")
     return new_seen and stock and rc_strict == 0 and empty, \
@@ -311,22 +313,33 @@ def case_search_no_hit(tmp):
 def case_search_tag(tmp):
     """`--tag` 一级过滤：只在该标签的卡里找；无标签可筛时不报错、不误召回。"""
     cards = {
-        "personal/a.md": card(title="甲 聚合生效", tags="[聚合, rx]",
+        "personal/a.md": card(title="甲 聚合生效",
+                              tags="[项目/personal, 模块/wifi, 关键词1/聚合, 关键词2/生效]",
                               body="> 聚合生效\n\n> 依据：fixture\n"),
-        "personal/b.md": card(title="乙 内存回收", tags="[内存, zram]",
+        "personal/b.md": card(title="乙 内存回收",
+                              tags="[项目/personal, 模块/内存, 关键词1/内存, 关键词2/回收]",
                               body="> 内存回收\n\n> 依据：fixture\n"),
     }
     rows = ["| 甲 聚合生效 | 聚合生效 | personal/a.md |",
             "| 乙 内存回收 | 内存回收 | personal/b.md |"]
     root = make_kb(tmp, cards, index(rows))
     import json as _json
-    only_tag = _json.loads(run(SEARCH, root, "--tag", "内存", "--json")[1])
-    tagged_q = _json.loads(run(SEARCH, root, "回收", "--tag", "内存", "--json")[1])
-    none = _json.loads(run(SEARCH, root, "--tag", "不存在", "--json")[1])
+    only_tag = _json.loads(run(SEARCH, root, "--module", "内存", "--json")[1])
+    tagged_q = _json.loads(run(SEARCH, root, "回收", "--module", "内存", "--json")[1])
+    none = _json.loads(run(SEARCH, root, "--module", "不存在", "--json")[1])
     ok = ([r["path"] for r in only_tag["results"]] == ["personal/b.md"]
           and [r["path"] for r in tagged_q["results"]] == ["personal/b.md"]
           and none["results"] == [])
     return ok, f"仅标签={len(only_tag['results'])} 标签+词={len(tagged_q['results'])} 未知标签={len(none['results'])}"
+
+
+def case_tag_facets(tmp):
+    """标签三面（规格）：项目与路径不符 / 缺二级关键词都报出来，但不阻断（rc 0）。"""
+    wrong = card(title="标签错卡", tags="[项目/nope, 模块/wifi, 关键词1/甲]")
+    root = make_kb(tmp, {"personal/bad.md": wrong},
+                   index(["| 标签错卡 | 结论 | personal/bad.md |"]))
+    rc, out = run(CHECK, root)
+    return (rc == 0 and "与路径不符" in out and "缺关键词2" in out), f"rc={rc}"
 
 
 CASES = [
@@ -352,6 +365,7 @@ CASES = [
     case_search_stale,
     case_search_no_hit,
     case_search_tag,
+    case_tag_facets,
 ]
 
 

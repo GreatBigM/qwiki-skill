@@ -138,7 +138,7 @@ def sync(con, root):
     return len(changed) + len(removed)
 
 
-def search(con, root, query, limit=10, tag=None):
+def search(con, root, query, limit=10, tags=None):
     """召回 = 各 token 命中集的并集；排序 = 字段权重 × IDF × (1+log tf)。
 
     为什么不用 FTS5 的 bm25 直接排序：它按文档长度归一，长卡（恰恰常是干货最多的卡）
@@ -147,14 +147,15 @@ def search(con, root, query, limit=10, tag=None):
     """
     toks = list(dict.fromkeys(tokens(query)))
     tagged = None
-    if tag:
-        tagged = {r[0] for r in con.execute(
-            "SELECT id FROM cards WHERE tags LIKE ?", (f"%,{tag.strip().lower()},%",))}
-        if not toks:                      # 只给标签：列出这个标签下的卡
-            rows = con.execute("SELECT path, title, summary FROM cards WHERE id IN ("
-                               + ",".join("?" * len(tagged)) + ") ORDER BY path LIMIT ?",
-                               (*sorted(tagged), limit)) if tagged else []
-            return [(0.0, {"path": p, "title": t, "summary": sm}, []) for p, t, sm in rows]
+    for facet in (tags or []):
+        hit = {r[0] for r in con.execute(
+            "SELECT id FROM cards WHERE tags LIKE ?", (f"%,{facet.strip().lower()},%",))}
+        tagged = hit if tagged is None else (tagged & hit)
+    if tagged is not None and not toks:   # 只给面：列出这些标签下的卡
+        rows = con.execute("SELECT path, title, summary FROM cards WHERE id IN ("
+                           + ",".join("?" * len(tagged)) + ") ORDER BY path LIMIT ?",
+                           (*sorted(tagged), limit)) if tagged else []
+        return [(0.0, {"path": p, "title": t, "summary": sm}, []) for p, t, sm in rows]
     if not toks:
         return []
     total = con.execute("SELECT COUNT(*) FROM cards").fetchone()[0] or 1
@@ -208,14 +209,17 @@ def search(con, root, query, limit=10, tag=None):
 
 
 def main(argv):
-    flags, words, root, limit, tag = set(), [], None, 10, None
+    flags, words, root, limit, facets = set(), [], None, 10, []
     i = 0
     while i < len(argv):
         a = argv[i]
         if a == "--limit" and i + 1 < len(argv):
             limit = int(argv[i + 1]); i += 2; continue
-        if a == "--tag" and i + 1 < len(argv):
-            tag = argv[i + 1]; i += 2; continue
+        if a in ("--tag", "--project", "--module", "--type") and i + 1 < len(argv):
+            value = argv[i + 1]
+            prefix = {"--project": "项目", "--module": "模块", "--type": "类型"}.get(a)
+            facets.append(value if prefix is None else f"{prefix}/{value}")
+            i += 2; continue
         if a.startswith("-"):
             flags.add(a); i += 1; continue
         if root is None and os.path.isdir(os.path.expanduser(a)):
@@ -243,10 +247,10 @@ def main(argv):
             return 0
 
         query = " ".join(words).strip()
-        if not query and not tag:
-            print("用法：qwiki-search.py [库根] <关键词...> [--tag 标签] [--limit N] [--json] [--stats] [--rebuild]")
+        if not query and not facets:
+            print("用法：qwiki-search.py [库根] <关键词...> [--tag 标签|--project x|--module x|--type x] [--limit N] [--json] [--stats] [--rebuild]")
             return 1
-        results = search(con, root, query, limit, tag)
+        results = search(con, root, query, limit, facets)
         if "--json" in flags:
             print(json.dumps({
                 "query": query,
@@ -259,7 +263,7 @@ def main(argv):
             }, ensure_ascii=False, indent=2))
             return 0
 
-        print(f"qwiki 检索：{query}" + (f" ［标签 {tag}］" if tag else "") + f"（{total} 张卡"
+        print(f"qwiki 检索：{query}" + (f" ［{' '.join(facets)}］" if facets else "") + f"（{total} 张卡"
               + (f"，更新 {changed} 张索引" if changed else "") + f"，{elapsed * 1000:.0f} ms）\n")
         if not results:
             print("  没有命中。换个说法，或确认这张知识还没入库。")
