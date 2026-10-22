@@ -3,6 +3,7 @@
 
 用法:  python3 qwiki-check.py [知识库根目录]        # 默认 ~/qwiki
        python3 qwiki-check.py ~/qwiki --quiet      # 只打失败项与汇总
+       python3 qwiki-check.py ~/qwiki --all        # 失败明细打全量（默认截断到 20 条）
 退出码: 0 = 全过；1 = 有失败项（可直接串进 hook / CI）
 
 设计取舍：
@@ -504,6 +505,7 @@ CHECKS = [
 def main(argv):
     root = os.path.expanduser(argv[0]) if argv and not argv[0].startswith("-") else os.path.expanduser("~/qwiki")
     quiet = "--quiet" in argv or "-q" in argv
+    show_all = "--all" in argv
     if not os.path.isdir(root):
         print(f"✗ 不是目录：{root}")
         return 1
@@ -515,10 +517,11 @@ def main(argv):
         name, ok, detail = fn(root, cards, rows)
         print(f"  {'⊘' if ok is None else ('✓' if ok else '✗')} {name}")
         if ok is not True:
-            for d in detail[:20]:
+            shown = detail if show_all else detail[:20]
+            for d in shown:
                 print(f"      {d}")
-            if len(detail) > 20:
-                print(f"      … 另 {len(detail) - 20} 条")
+            if len(detail) > len(shown):
+                print(f"      … 另 {len(detail) - len(shown)} 条（--all 打全量）")
         if ok is False:
             failed += 1
             failed_names.append(name)
@@ -526,11 +529,12 @@ def main(argv):
             skipped += 1
     hints = naming_hints(root, cards, rows)
     if hints and not quiet:
+        shown_hints = hints if show_all else hints[:20]
         print(f"\n提示（不计失败 —— 命名形态建议，规则见 SCHEMA §命名约定 规则 4）")
-        for h in hints[:20]:
+        for h in shown_hints:
             print(f"    · {h}")
-        if len(hints) > 20:
-            print(f"    … 另 {len(hints) - 20} 条")
+        if len(hints) > len(shown_hints):
+            print(f"    … 另 {len(hints) - len(shown_hints)} 条（--all 打全量）")
     if any("正投影" in n for n in failed_names):
         print("\n提示：投影类红灯（标题列 / 总结列与卡片对不上）不用手改 —— "
               "跑 `python3 scripts/qwiki-sync.py <库根> --write` 重建 INDEX 后再自检。")

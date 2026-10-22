@@ -1,0 +1,39 @@
+name: gates
+
+# 本地 pre-push 只有「你在这台机器上推」时才生效；换机器、网页端改文件、别人提 PR 都没有闸。
+# 这里把同一批闸门搬到服务端：先验守卫自身（测试 / 脱敏规则自检），再扫本仓。
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gates:
+    name: 发布闸门
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # 装上 PyYAML 才跑得到「YAML 头可解析」那项；缺库时它会标「跳过」而不是假绿，
+      # 两种状态都合规，CI 里取覆盖更全的那种。
+      - name: 依赖
+        run: python3 -m pip install --quiet pyyaml
+
+      - name: 核心测试（check / sync 守卫行为）
+        run: python3 scripts/qwiki-tests.py -v
+
+      - name: 脱敏闸（先自检规则表，再扫本仓）
+        run: |
+          python3 scripts/publish-check.py --self-test
+          python3 scripts/publish-check.py
+
+      - name: 数字审计（宪法与对外文档不含实测数字）
+        run: python3 scripts/number-audit.py

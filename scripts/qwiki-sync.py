@@ -3,6 +3,7 @@
 
 用法:  python3 qwiki-sync.py [知识库根目录]           # 预览（只读，什么都不改）
        python3 qwiki-sync.py [知识库根目录] --write  # 落盘
+       python3 qwiki-sync.py [知识库根目录] --write --strict  # 需人判 > 0 时退出码 2
 
 为什么有这个脚本（SCHEMA §INDEX 登记规则）：
   INDEX 是卡片集的正投影，「正投影」由人维护必然漂移——改一张卡要同步 INDEX
@@ -23,6 +24,8 @@
   - INDEX 行指向不存在的文件（改名残留，删不删由人定）
 
 只读自检仍在 qwiki-check.py；本脚本复用它的解析函数，避免口径两处实现。
+
+`--strict`：把「需人判」升级成非零退出码（2）——CI 与批处理里，打印了却 exit 0 等于没报。
 """
 import importlib.util
 import os
@@ -62,6 +65,7 @@ def is_table_row(line):
 def main(argv):
     root = os.path.expanduser(next((a for a in argv if not a.startswith("-")), "~/qwiki"))
     write = "--write" in argv
+    strict = "--strict" in argv
     if not os.path.isdir(root):
         print(f"x 不是目录: {root}")
         return 1
@@ -167,12 +171,15 @@ def main(argv):
 
     if not write:
         print("\n预览模式，未改任何文件。")
-        return 0
-    tmp = index_path + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as fh:
-        fh.write("\n".join(out))
-    os.replace(tmp, index_path)
-    print("\n✅ 已写入 INDEX.md")
+    else:
+        tmp = index_path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as fh:
+            fh.write("\n".join(out))
+        os.replace(tmp, index_path)
+        print("\n✅ 已写入 INDEX.md")
+    if strict and manual:
+        print(f"✗ --strict：{len(manual)} 项需人判 → 退出码 2")
+        return 2
     return 0
 
 

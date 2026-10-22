@@ -79,7 +79,8 @@ def case_baseline(tmp):
     root = make_kb(tmp, {"personal/card.md": card()},
                    index(["| 卡片标题 | 结论 | personal/card.md |"]))
     rc, out = run(CHECK, root)
-    return rc == 0 and "全部通过" in out, f"rc={rc}"
+    # 不断言「全部通过」：机器缺 PyYAML 时 YAML 项会标「跳过」，那是合规态（⊘ 不是 ✗）
+    return rc == 0 and "✗" not in out, f"rc={rc}"
 
 
 def case_missing_quote(tmp):
@@ -180,6 +181,28 @@ def case_summary_preserved(tmp):
     return kept and "首行是出处/状态" in out, f"总结保留={kept}"
 
 
+def case_all_flag(tmp):
+    """`--all`：默认截断到 20 条并提示「另 N 条」，--all 必须打全量（否则大库只能另写脚本捞）。"""
+    cards = {f"personal/card-{i}.md": card(title=f"卡{i}", h1=f"另一标题{i}") for i in range(25)}
+    rows = [f"| 卡{i} | 结论 | personal/card-{i}.md |" for i in range(25)]
+    root = make_kb(tmp, cards, index(rows))
+    rc, out = run(CHECK, root)
+    truncated = rc == 1 and "另 5 条" in out
+    rc2, out2 = run(CHECK, root, "--all")
+    full = rc2 == 1 and "… 另" not in out2 and out2.count("正文 H1 ≠ YAML title") == 25
+    return truncated and full, f"默认截断={truncated} / --all 全量={full}"
+
+
+def case_strict(tmp):
+    """`--strict`：需人判 > 0 时退出码 2（打印了却 exit 0，CI 等于没报）。"""
+    root = make_kb(tmp, {"personal/card.md": card(body="只有正文。\n")},
+                   index(["| 卡片标题 | 结论 | personal/card.md |"]))
+    rc_plain, _ = run(SYNC, root, "--write")
+    rc_strict, out = run(SYNC, root, "--write", "--strict")
+    return rc_plain == 0 and rc_strict == 2 and "--strict" in out, \
+        f"默认 rc={rc_plain} / --strict rc={rc_strict}"
+
+
 CASES = [
     case_baseline,
     case_missing_quote,
@@ -192,6 +215,8 @@ CASES = [
     case_idempotent,
     case_h1_mismatch,
     case_summary_preserved,
+    case_all_flag,
+    case_strict,
 ]
 
 

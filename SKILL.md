@@ -1,7 +1,7 @@
 ---
 name: qwiki
 description: 个人知识库管理：卡片索引、知识沉淀、自动检索，AI 替你积累项目经验。
-version: 2.15.0
+version: 2.16.0
 author: GreatBigM
 license: MIT
 category: knowledge
@@ -137,7 +137,7 @@ AI:  执行操作 → 回报结果
    - 模块边界：search_files 确认文件清单
    - 素材：memory + 来源文档 + 代码验证
    - 卡片是「导航 + 核心事实」，细节指向来源/现有 references（相关卡片段），不搬运全文
-4. **归属路由**：个人知识 → `~/qwiki/personal/`，跨项目 → `~/qwiki/projects/common/`，项目 → `~/qwiki/projects/<项目>/`
+4. **归属路由**：个人知识 → `~/qwiki/personal/`，跨项目 → `~/qwiki/projects/common/`，项目 → `~/qwiki/projects/<项目>/`。命令行给了 `[目标]`（`personal` / `common` / `<项目名>`）时**全部落到该目录**（覆盖路由），没给就按内容逐张判断
 5. **INDEX 回填**：只登记新卡——**素材不进 INDEX**（它们是卡片引用的数据来源，见 SCHEMA §INDEX 登记规则）
 6. `cd ~/qwiki && git commit -m "migrate <来源>: <N> 张卡 + INDEX 回填"`
 7. 提示"迁移完成：N 张卡，INDEX 回填 M 条。"
@@ -159,13 +159,13 @@ AI:  执行操作 → 回报结果
 ## sync — 日常同步（一致性校验 + 防腐化 + 结构审视）
 
 0. **机器自检（先跑这个）**：`python3 <skill 根>/scripts/qwiki-check.py [知识库根]`（默认 `~/qwiki`）
-   - **只读**，退出码 0 = 全过、1 = 有失败项；11 项断言把下面的约定变成可执行检查：
+   - **只读**，退出码 0 = 全过、1 = 有失败项；明细默认截断，`--all` 打全量（大库排查用）；11 项断言把下面的约定变成可执行检查：
      卡片头部（H1/title 同串 / `>` 结论行 / 依据·状态）、INDEX 正投影（标题列 / 总结列 / 段头 / 一卡一行 / 无漏登记）、
      INDEX 纯度（只登记卡片 / 无死链 / 摘要长度 / 表体完整）、双链只连卡片、素材路径、命名约定、
      slug 全库唯一（同名族加项目前缀）、检索双向可达（聚合卡子卡有上行边）、轨迹卡归属、素材/脚本不得带头、YAML 可解析
    - 下面是同一批约定的**说明与人工处置口径**；自检报什么，按对应条目处置
 
-   投影类红灯（标题列 / 总结列与卡片对不上）**不用逐行手改**：先跑 `python3 <skill 根>/scripts/qwiki-sync.py [知识库根] --write` 重建 INDEX，再跑自检。
+   投影类红灯（标题列 / 总结列与卡片对不上）**不用逐行手改**：先跑 `python3 <skill 根>/scripts/qwiki-sync.py [知识库根] --write` 重建 INDEX，再跑自检。批处理 / CI 里加 `--strict`：**需人判 > 0 时退出码 2**（打印了却 exit 0 等于没报）。
 
 1. 一致性校验（报告修复）：
    - INDEX 死链/漏登记（登记行指向的文件是否存在）
@@ -290,8 +290,8 @@ INDEX 条目数、已入驻项目、知识文件数。
 - 宪法（与 SKILL.md 平级，唯一真相源）：`SCHEMA.md`（随安装拷贝）
 - init 模板（建库）：`templates/index.md`
 - 卡片模板（生成卡：**先定用途**；聚合卡 / 独立卡由内容推导）：`templates/card-aggregate.md`（聚合卡）、`templates/card-track.md`（独立·轨迹卡）、`templates/card-measurement.md`（独立·实测卡）、`templates/card-issue.md`（独立·问题说明卡）、`templates/card-design.md`（独立·设计说明卡）、`templates/note-general.md`（独立·随笔卡）；审查卡走**候选骨架**（`type: card`）、机制·手册类走自由骨架（`type: note`）
-- **投影生成**：`scripts/qwiki-sync.py`（INDEX 两列由卡片推出来；`--write` 落盘，修复投影类红灯不用手改）
-- **自检脚本**：`scripts/qwiki-check.py`（SCHEMA/SKILL 约定的可执行版：卡片头部 / 投影 / 纯度 / 双链 / 素材 / 命名 / slug / 可达 / 轨迹 / 带头 / YAML；只读、仅需 python3 标准库，PyYAML 可选，缺库时该项标「跳过」不计通过）
+- **投影生成**：`scripts/qwiki-sync.py`（INDEX 两列由卡片推出来；`--write` 落盘，修复投影类红灯不用手改；`--strict` 让「需人判」返回非零）
+- **自检脚本**：`scripts/qwiki-check.py`（SCHEMA/SKILL 约定的可执行版：卡片头部 / 投影 / 纯度 / 双链 / 素材 / 命名 / slug / 可达 / 轨迹 / 带头 / YAML；只读、仅需 python3 标准库，PyYAML 可选，缺库时该项标「跳过」不计通过；`--all` 打全量明细）
 - **核心测试**：`scripts/qwiki-tests.py`（守卫每条一个 fixture：缺 `>` 不覆盖总结、出处首行、空段补表头、`|` 拒绝写表、段头错位、表体断裂、PyYAML 跳过、幂等、H1≠title；断言退出码 + 报错串 + 落盘结果，退出码即结论）
 - **发布前检查**（发布本仓时用，不是知识库操作）：`scripts/publish-check.py`（扫真实项目代号 / 内网 IP / MAC / 长 hash / 凭据 / 本机路径）+ `scripts/number-audit.py`（宪法与对外文档不得含实测数字——判据原文见该脚本 docstring 的 `CURRENT:` 行，**引用不复制**）+ `scripts/hooks/pre-push`（`git config core.hooksPath scripts/hooks` 启用，**五项都跑**（核心测试 / 脱敏自检 / 脱敏 / 数字 / CHANGELOG 同步），任一命中即拒绝推送）
 - hook 脚本（自发生长事件驱动，四 hook 工具兼容 + pi 扩展）：`scripts/knowledge-sediment-lib.sh`（归一化层）+ `scripts/knowledge-sediment-hint.sh`、`scripts/knowledge-sediment-toolcheck.sh`、`scripts/knowledge-sediment-inject.sh`、`scripts/knowledge-sediment-subagent.sh`（ZCode 无 SubagentStop，不注册该项）；pi 适配见 `~/.pi/agent/extensions/qwiki-sediment.ts`（无 hook，事件映射同协议）——**受体现状见 init §跨工具说明**（本机 Hermes/Claude/DSH，DSH 无 hook 面）
