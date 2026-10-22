@@ -29,6 +29,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 CHECK = HERE / "qwiki-check.py"
 SYNC = HERE / "qwiki-sync.py"
+SEARCH = HERE / "qwiki-search.py"
 PY = sys.executable
 
 CARD = """---
@@ -249,6 +250,63 @@ def case_ledger(tmp):
         f"入账={new_seen}/{ledger} 存量={stock} strict rc={rc_strict} 销账={empty}"
 
 
+def case_search_rank(tmp):
+    """检索排序：命中的卡排第一（索引自动构建，无需预先准备）。"""
+    cards = {
+        "personal/alpha.md": card(title="RX 聚合为何不生效", body="> RX 聚合从未生效\n\n> 依据：fixture\n\n## 证据\n聚合分支是死代码。\n"),
+        "personal/beta.md": card(title="串口烧录手册", body="> TFTP 烧录三步\n\n> 依据：fixture\n"),
+    }
+    rows = ["| RX 聚合为何不生效 | RX 聚合从未生效 | personal/alpha.md |",
+            "| 串口烧录手册 | TFTP 烧录三步 | personal/beta.md |"]
+    root = make_kb(tmp, cards, index(rows))
+    rc, out = run(SEARCH, root, "RX 聚合", "--json")
+    import json as _json
+    data = _json.loads(out)
+    first = data["results"][0]["path"] if data["results"] else None
+    return rc == 0 and first == "personal/alpha.md", f"rc={rc} top={first}"
+
+
+def case_search_cjk(tmp):
+    """中文二元组：只出现在一张卡里的词要能命中，且不误召回全库。"""
+    cards = {
+        "personal/one.md": card(title="零拷贝证伪", body="> 微基准证伪零拷贝\n\n> 依据：fixture\n"),
+        "personal/two.md": card(title="内存预算", body="> zram 与 swap 分离\n\n> 依据：fixture\n"),
+    }
+    rows = ["| 零拷贝证伪 | 微基准证伪零拷贝 | personal/one.md |",
+            "| 内存预算 | zram 与 swap 分离 | personal/two.md |"]
+    root = make_kb(tmp, cards, index(rows))
+    rc, out = run(SEARCH, root, "零拷贝", "--json")
+    import json as _json
+    data = _json.loads(out)
+    paths = [r["path"] for r in data["results"]]
+    return rc == 0 and paths[:1] == ["personal/one.md"] and "personal/two.md" not in paths, \
+        f"rc={rc} hits={paths}"
+
+
+def case_search_stale(tmp):
+    """索引失效自动重建：卡改了但没 --rebuild，也必须查到新词。"""
+    root = make_kb(tmp, {"personal/card.md": card(body="> 旧结论\n\n> 依据：fixture\n")},
+                   index(["| 卡片标题 | 旧结论 | personal/card.md |"]))
+    run(SEARCH, root, "旧结论")
+    (root / "personal/card.md").write_text(
+        card(body="> 新结论：奇美拉词\n\n> 依据：fixture\n"), encoding="utf-8")
+    rc, out = run(SEARCH, root, "奇美拉", "--json")
+    import json as _json
+    data = _json.loads(out)
+    hit = [r for r in data["results"] if r["path"] == "personal/card.md"]
+    return rc == 0 and bool(hit) and data["rebuilt"] is True, f"rc={rc} rebuilt={data.get('rebuilt')}"
+
+
+def case_search_no_hit(tmp):
+    """零命中：退出码 0 + 明确提示（空结果不是错误）。"""
+    root = make_kb(tmp, {"personal/card.md": card()},
+                   index(["| 卡片标题 | 结论 | personal/card.md |"]))
+    rc, out = run(SEARCH, root, "完全不存在的词组", "--json")
+    import json as _json
+    data = _json.loads(out)
+    return rc == 0 and data["results"] == [], f"rc={rc} n={len(data['results'])}"
+
+
 CASES = [
     case_baseline,
     case_missing_quote,
@@ -267,6 +325,10 @@ CASES = [
     case_missing_registration,
     case_spec_never_red,
     case_ledger,
+    case_search_rank,
+    case_search_cjk,
+    case_search_stale,
+    case_search_no_hit,
 ]
 
 
