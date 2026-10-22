@@ -344,11 +344,12 @@ def case_backup(tmp):
                 ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "init"]):
         sp.run(["git", "-C", str(kb), *cmd], capture_output=True)
     target = str(Path(tmp) / "out" / "kb.bundle")
-    rc, out = run(BACKUP, kb, target)
-    ok_bundle = rc == 0 and os.path.exists(target) and \
-        sp.run(["git", "bundle", "verify", target], capture_output=True).returncode == 0
+    # 在「非仓库目录」里调用：回归 systemd 里 cwd 不是仓库的失败形态
+    proc = sp.run([PY, str(BACKUP), str(kb), target], capture_output=True, text=True, cwd=tmp)
+    ok_bundle = proc.returncode == 0 and os.path.exists(target) and \
+        sp.run(["git", "-C", str(kb), "bundle", "verify", target], capture_output=True).returncode == 0
     rc2, _ = run(BACKUP, kb, str(kb / "inside.bundle"))
-    return ok_bundle and rc2 == 1, f"备份 rc={rc} 库内拒绝 rc={rc2}"
+    return ok_bundle and rc2 == 1, f"备份 rc={proc.returncode} 库内拒绝 rc={rc2}"
 
 
 def case_tag_facets(tmp):

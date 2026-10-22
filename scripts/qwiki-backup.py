@@ -56,7 +56,9 @@ def main(argv):
     if r.returncode != 0:
         print(f"x 打包失败：{r.stderr.strip()[:200]}")
         return 1
-    v = run(["git", "bundle", "verify", tmp])
+    # verify 必须在某个仓库里跑（要拿它的对象做前置校验）；用库本身最稳，
+    # 不依赖调用者的 cwd——systemd 里 cwd 是 $HOME，不是仓库。
+    v = run(["git", "-C", kb, "bundle", "verify", tmp])
     if v.returncode != 0:
         os.path.exists(tmp) and os.remove(tmp)
         print(f"x 校验失败：{v.stderr.strip()[:200]}")
