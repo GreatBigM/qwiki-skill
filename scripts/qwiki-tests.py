@@ -36,6 +36,7 @@ CARD = """---
 title: {title}
 type: note
 date: 2026-10-22
+tags: {tags}
 ---
 
 # {h1}
@@ -48,8 +49,8 @@ GOOD_BODY = "> 结论\n\n> 依据：fixture\n"
 INDEX_HEAD = "| 标题 | 总结 | 文件 |\n|------|------|------|"
 
 
-def card(title="卡片标题", h1=None, body=GOOD_BODY):
-    return CARD.format(title=title, h1=h1 or title, body=body)
+def card(title="卡片标题", h1=None, body=GOOD_BODY, tags="[]"):
+    return CARD.format(title=title, h1=h1 or title, body=body, tags=tags)
 
 
 def index(rows, section="personal"):
@@ -307,6 +308,27 @@ def case_search_no_hit(tmp):
     return rc == 0 and data["results"] == [], f"rc={rc} n={len(data['results'])}"
 
 
+def case_search_tag(tmp):
+    """`--tag` 一级过滤：只在该标签的卡里找；无标签可筛时不报错、不误召回。"""
+    cards = {
+        "personal/a.md": card(title="甲 聚合生效", tags="[聚合, rx]",
+                              body="> 聚合生效\n\n> 依据：fixture\n"),
+        "personal/b.md": card(title="乙 内存回收", tags="[内存, zram]",
+                              body="> 内存回收\n\n> 依据：fixture\n"),
+    }
+    rows = ["| 甲 聚合生效 | 聚合生效 | personal/a.md |",
+            "| 乙 内存回收 | 内存回收 | personal/b.md |"]
+    root = make_kb(tmp, cards, index(rows))
+    import json as _json
+    only_tag = _json.loads(run(SEARCH, root, "--tag", "内存", "--json")[1])
+    tagged_q = _json.loads(run(SEARCH, root, "回收", "--tag", "内存", "--json")[1])
+    none = _json.loads(run(SEARCH, root, "--tag", "不存在", "--json")[1])
+    ok = ([r["path"] for r in only_tag["results"]] == ["personal/b.md"]
+          and [r["path"] for r in tagged_q["results"]] == ["personal/b.md"]
+          and none["results"] == [])
+    return ok, f"仅标签={len(only_tag['results'])} 标签+词={len(tagged_q['results'])} 未知标签={len(none['results'])}"
+
+
 CASES = [
     case_baseline,
     case_missing_quote,
@@ -329,6 +351,7 @@ CASES = [
     case_search_cjk,
     case_search_stale,
     case_search_no_hit,
+    case_search_tag,
 ]
 
 
