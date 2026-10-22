@@ -111,7 +111,7 @@ def main(argv):
         print(f"x 缺 INDEX.md: {index_path}")
         return 1
     lines = open(index_path, encoding="utf-8").read().split("\n")
-    out, seen, stat = [], set(), {"title": 0, "summary": 0, "path": 0}
+    out, seen, stat = [], set(), {"title": 0, "summary": 0, "path": 0, "facets": 0}
     dropped, dead = [], []
 
     for line in lines:
@@ -144,6 +144,8 @@ def main(argv):
         stat["title"] += title != new_title
         stat["summary"] += summary != new_summary
         stat["path"] += (m.group(0) if m else path) != new_key
+        old_facets = cells[3] if len(cells) > 3 else ""
+        stat["facets"] += old_facets != new_facets
         out.append(row_line(new_title, new_summary, new_key, new_facets))
 
     added = []
@@ -192,7 +194,8 @@ def main(argv):
     print(f"qwiki 投影同步：{root}")
     print(f"  卡片 {len(cards)} 张 ｜ INDEX {len(qc.index_rows(root))} 行 ｜ "
           f"模式 {'写入' if write else '预览（加 --write 落盘）'}\n")
-    print(f"  标题列修正 {stat['title']} ｜ 总结列修正 {stat['summary']} ｜ 文件列归一 {stat['path']}")
+    print(f"  标题列修正 {stat['title']} ｜ 总结列修正 {stat['summary']} ｜ "
+          f"文件列归一 {stat['path']} ｜ 分类列修正 {stat['facets']}")
     print(f"  补登记 {len(added)} ｜ 重复行删除 {len(dropped)} ｜ 需人判 {len(manual)}")
     for group in (added, dropped, dead, manual):
         for item in group:

@@ -71,10 +71,10 @@ def load_index(root):
     return rows
 
 
-def norm_path(key):
-    if key.startswith(("personal/", "projects/")):
-        return key
-    return ("personal/" + key) if key.startswith("personal") else ("projects/" + key)
+def keyword_facet_hint(facets):
+    """关键词没有进 INDEX（那是卡片里的信息），按面筛不到——直接说清楚，别给空结果。"""
+    kw = [f for f in facets if f.split("/", 1)[0].startswith("关键词")]
+    return kw
 
 
 def match_facets(row, facets):
@@ -174,6 +174,12 @@ def main(argv):
               "[--tag 标签] [--limit N] [--json] [--stats]")
         return 1
 
+    kw_only = keyword_facet_hint(facets)
+    if kw_only and not words:
+        print(f"x {'、'.join(kw_only)} 是关键词，不进 INDEX 的面列 —— "
+              "把它当查询词用（标题/结论/正文都会匹配），或改用 --project/--module/--type")
+        return 1
+    facets = [f for f in facets if f not in kw_only]
     pool = [r for r in rows if match_facets(r, facets)]
     body = body_hits(root, query) if query else set()
     q_tokens = tokens(query)

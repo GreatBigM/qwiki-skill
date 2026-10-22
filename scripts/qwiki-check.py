@@ -132,7 +132,8 @@ def index_rows(root):
             continue
         key = m.group(0)
         rows.append({"line": ln, "section": section, "title": c[0], "summary": c[1],
-                     "path": c[2], "key": key})
+                     "path": c[2], "key": key,
+                     "facets": c[3] if len(c) > 3 else ""})
     return rows
 
 
@@ -278,6 +279,15 @@ def check_index_projection(root, cards, rows):
             bad.append(f"INDEX:{r['line']} 总结列为空")
         elif s and r["summary"] != s:
             bad.append(f"INDEX:{r['line']} 总结列 ≠ 卡片 `>` 行\n      INDEX: {r['summary'][:60]}\n      `>`  : {s[:60]}")
+        tags = _tags_of(fm)
+        want = "/".join([
+            next((t.split("/", 1)[1] for t in tags if t.startswith("项目/")), "-"),
+            next((t.split("/", 1)[1] for t in tags if t.startswith("模块/")), "-"),
+            next((t.split("/", 1)[1] for t in tags if t.startswith("类型/")), "-"),
+        ])
+        if (r.get("facets") or "") != want:
+            bad.append(f"INDEX:{r['line']} 分类列 ≠ 卡片三面（INDEX: {r.get('facets') or '空'} / "
+                       f"卡片: {want}）—— 跑 `qwiki-sync.py --write` 重推")
         if r["summary"].startswith(("#", "|", "!")) or len(r["summary"]) > MAX_SUMMARY:
             bad.append(f"INDEX:{r['line']} 总结列异常（{len(r['summary'])} 字符，应以摘要开头且 ≤{MAX_SUMMARY}）")
     return "INDEX 投影（标题列 / 总结列）", not bad, bad

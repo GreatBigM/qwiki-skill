@@ -56,7 +56,11 @@ def card(title="卡片标题", h1=None, body=GOOD_BODY, tags="[]"):
 
 def index(rows, section="personal"):
     """三列旧格式的 fixture 自动补上第四列（分类），避免每处手写。"""
-    padded = [r if r.count("|") >= 5 else r.rstrip().rstrip("|").rstrip() + " | - |" for r in rows]
+    def _pad(r):
+        if r.count("|") >= 5 or set(r.strip()) <= set("|-: "):
+            return r          # 已经是四列，或本就是分隔行
+        return r.rstrip().rstrip("|").rstrip() + " | -/-/- |"
+    padded = [_pad(r) for r in rows]
     return f"## {section}\n\n{INDEX_HEAD}\n" + "\n".join(padded) + "\n"
 
 
@@ -191,7 +195,7 @@ def case_all_flag(tmp):
     """`--all`：默认截断并提示「另 N 条」，--all 打全量（否则大库只能另写脚本捞）。"""
     cards = {f"personal/card-{i}.md": card(title=f"卡{i}", h1=f"另一标题{i}", tags=FACET_TAGS)
              for i in range(25)}
-    rows = [f"| 卡{i} | 结论 | personal/card-{i}.md |" for i in range(25)]
+    rows = [f"| 卡{i} | 结论 | personal/card-{i}.md | personal/wifi/- |" for i in range(25)]
     root = make_kb(tmp, cards, index(rows))
     rc, out = run(CHECK, root)
     truncated = rc == 0 and "另 5 条" in out
@@ -239,7 +243,7 @@ def case_spec_never_red(tmp):
 def case_ledger(tmp):
     """账本三态：--baseline 入账 → 再体检算存量（strict 也不红）→ 修好后销账。"""
     root = make_kb(tmp, {"personal/card.md": card(h1="另一个标题", tags=FACET_TAGS)},
-                   index(["| 卡片标题 | 结论 | personal/card.md |"]))
+                   index(["| 卡片标题 | 结论 | personal/card.md | personal/wifi/- |"]))
     _, out_new = run(CHECK, root)
     new_seen = "新增 1" in out_new
     run(CHECK, root, "--baseline")
@@ -341,6 +345,14 @@ def case_tag_facets(tmp):
     return (rc == 0 and "与路径不符" in out and "缺关键词2" in out), f"rc={rc}"
 
 
+def case_facet_projection(tmp):
+    """分类列投影：INDEX 的分类列与卡片三面不一致要报（规格项，不阻断）。"""
+    root = make_kb(tmp, {"personal/card.md": card(tags="[项目/personal, 模块/内存, 关键词1/甲, 关键词2/乙]")},
+                   index(["| 卡片标题 | 结论 | personal/card.md | personal/wifi/- |"]))
+    rc, out = run(CHECK, root)
+    return (rc == 0 and "分类列 ≠ 卡片三面" in out), f"rc={rc}"
+
+
 CASES = [
     case_baseline,
     case_missing_quote,
@@ -365,6 +377,7 @@ CASES = [
     case_search_no_hit,
     case_search_tag,
     case_tag_facets,
+    case_facet_projection,
 ]
 
 
